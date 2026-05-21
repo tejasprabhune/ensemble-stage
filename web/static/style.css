@@ -185,6 +185,28 @@ body {
   color: var(--fg);
 }
 
+.topbar-user {
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.topbar-user:hover { color: var(--fg); }
+
+.btn-signout {
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.btn-signout:hover {
+  color: var(--fg);
+  border-color: var(--muted);
+}
+
 /* Page body */
 
 .page-body {

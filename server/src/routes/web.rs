@@ -8,15 +8,30 @@ use axum::{
 
 use crate::{AppError, AppState, auth::MaybeUser};
 
+pub struct UserCtx {
+    pub github_login: Option<String>,
+}
+
+impl UserCtx {
+    fn from(m: &MaybeUser) -> Self {
+        UserCtx {
+            github_login: m.0.as_ref().map(|u| u.github_login.clone()),
+        }
+    }
+}
+
 #[derive(Template)]
 #[template(path = "landing.html")]
-struct LandingTemplate;
+struct LandingTemplate {
+    user: UserCtx,
+}
 
 #[derive(Template)]
 #[template(path = "project.html")]
 struct ProjectTemplate {
     org_slug: String,
     project_slug: String,
+    user: UserCtx,
 }
 
 #[derive(Template)]
@@ -25,6 +40,7 @@ struct RunDetailTemplate {
     run_id: String,
     org_slug: String,
     project_slug: String,
+    user: UserCtx,
 }
 
 #[derive(Template)]
@@ -33,6 +49,7 @@ struct SweepTemplate {
     sweep_id: String,
     org_slug: String,
     project_slug: String,
+    user: UserCtx,
 }
 
 #[derive(Template)]
@@ -41,11 +58,14 @@ struct TrainingRunTemplate {
     training_run_id: String,
     org_slug: String,
     project_slug: String,
+    user: UserCtx,
 }
 
 #[derive(Template)]
 #[template(path = "account.html")]
-struct AccountTemplate;
+struct AccountTemplate {
+    user: UserCtx,
+}
 
 fn render<T: Template>(t: T) -> Result<Html<String>, AppError> {
     t.render()
@@ -54,39 +74,39 @@ fn render<T: Template>(t: T) -> Result<Html<String>, AppError> {
 }
 
 async fn landing(maybe_user: MaybeUser) -> Result<Html<String>, AppError> {
-    render(LandingTemplate)
+    render(LandingTemplate { user: UserCtx::from(&maybe_user) })
 }
 
 async fn project(
     maybe_user: MaybeUser,
     Path((org_slug, project_slug)): Path<(String, String)>,
 ) -> Result<Html<String>, AppError> {
-    render(ProjectTemplate { org_slug, project_slug })
+    render(ProjectTemplate { org_slug, project_slug, user: UserCtx::from(&maybe_user) })
 }
 
 async fn run_detail(
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, run_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
-    render(RunDetailTemplate { run_id, org_slug, project_slug })
+    render(RunDetailTemplate { run_id, org_slug, project_slug, user: UserCtx::from(&maybe_user) })
 }
 
 async fn sweep(
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, sweep_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
-    render(SweepTemplate { sweep_id, org_slug, project_slug })
+    render(SweepTemplate { sweep_id, org_slug, project_slug, user: UserCtx::from(&maybe_user) })
 }
 
 async fn training_run(
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, training_run_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
-    render(TrainingRunTemplate { training_run_id, org_slug, project_slug })
+    render(TrainingRunTemplate { training_run_id, org_slug, project_slug, user: UserCtx::from(&maybe_user) })
 }
 
 async fn account(maybe_user: MaybeUser) -> Result<Html<String>, AppError> {
-    render(AccountTemplate)
+    render(AccountTemplate { user: UserCtx::from(&maybe_user) })
 }
 
 pub fn router() -> Router<AppState> {

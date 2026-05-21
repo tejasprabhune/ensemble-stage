@@ -16,9 +16,12 @@
   </nav>
   <div class="topbar-right">
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9680;</button>
-    {% block auth_buttons %}
+    {% if let Some(login) = user.github_login %}
+      <a class="topbar-user" href="/me">{{ login }}</a>
+      <a class="btn-signout" href="/auth/logout">Sign out</a>
+    {% else %}
       <a class="btn-signin" href="/auth/github/login">Sign in with GitHub</a>
-    {% endblock %}
+    {% endif %}
   </div>
 </header>
 
@@ -33,11 +36,13 @@
       <button class="shortcuts-close" id="shortcutsClose">&#x2715;</button>
     </div>
     <table class="shortcuts-table">
-      <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous row</td></tr>
-      <tr><td><kbd>Enter</kbd></td><td>Open selected row</td></tr>
-      <tr><td><kbd>/</kbd></td><td>Focus filter</td></tr>
-      <tr><td><kbd>c</kbd></td><td>Compare selected runs</td></tr>
-      <tr><td><kbd>?</kbd></td><td>This help overlay</td></tr>
+      <tbody>
+        <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous row</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>Open selected row</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Focus filter</td></tr>
+        <tr><td><kbd>c</kbd></td><td>Compare selected runs</td></tr>
+        <tr><td><kbd>?</kbd></td><td>This overlay</td></tr>
+      </tbody>
     </table>
   </div>
 </div>
