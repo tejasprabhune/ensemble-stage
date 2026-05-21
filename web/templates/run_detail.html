@@ -203,14 +203,21 @@ runs
 
     const deleteBtn = document.getElementById('deleteRunBtn');
     if (deleteBtn) {
-      deleteBtn.addEventListener('click', async () => {
-        if (!confirm('Delete this run? This cannot be undone.')) return;
-        const r = await fetch('/v1/runs/' + runId, { method: 'DELETE' });
-        if (r.ok || r.status === 204) {
-          history.back();
-        } else {
-          alert('Delete failed: ' + r.status);
-        }
+      deleteBtn.addEventListener('click', () => {
+        window.showDialog({
+          message: 'Delete this run? This cannot be undone.',
+          ok: 'Delete',
+          cancel: 'Cancel',
+          danger: true,
+          onOk: async () => {
+            const r = await fetch('/v1/runs/' + runId, { method: 'DELETE' });
+            if (r.ok || r.status === 204) {
+              window.location.href = '/{{ org_slug }}/{{ project_slug }}';
+            } else {
+              window.showDialog({ message: 'Delete failed: ' + r.status });
+            }
+          }
+        });
       });
     }
   })();
