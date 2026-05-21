@@ -7,10 +7,10 @@
 <section class="landing-hero">
   <div class="landing-prose">
     <h1 class="landing-wordmark">stage</h1>
-    <p class="landing-lead">An observability record for ensemble runs.</p>
+    <p class="landing-lead">Observability for multi-agent reinforcement learning.</p>
     <div class="landing-body">
-      <p>When you run a scenario with Stage configured, every event streams as it happens -- actor messages, tool calls, state changes at each step, cost accumulations, and grader output. The run URL appears in your terminal before the scenario starts. You can open it in a browser and watch the trace build in real time, or come back later and step through each event as if the run were still live. A single run tells you not just what the outcome was but why: which tool call consumed the budget, where the agent's reasoning diverged, which predicate the grader caught.</p>
-      <p>Sweeps group runs that vary a parameter -- backend, seed, world -- so you can compare model behavior across conditions in one place. Training runs record the job alongside the evaluations that preceded it, so the record of what changed and whether it worked stays connected rather than scattered across logs.</p>
+      <p>Stage records what happens inside an ensemble run. Every message, tool call, state change, and cost accumulation streams to a persistent trace as the scenario executes. When the run finishes, the trace is searchable, shareable, and queryable through a web UI. A run URL appears in your terminal the moment the scenario starts, before the first event has even been sent. You can open it and watch the evaluation unfold in real time, or come back later and step through every decision the agent made.</p>
+      <p>Sweeps group runs that vary a single parameter across multiple cells -- different models, different seeds, different worlds -- so you can compare outcomes in one place without assembling spreadsheets. Training runs record each fine-tuning job alongside its hyperparameters and per-step metrics, connected to the evaluation sweeps that preceded and followed them. The result is a structured record of what your agents did, across every run, every sweep, and every training iteration.</p>
     </div>
     {% if let Some(_login) = user.github_login %}
       <div class="landing-ctas">

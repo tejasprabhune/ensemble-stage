@@ -1,0 +1,164 @@
+{% extends "base-app.html" %}
+
+{% block title %}Compare runs - {{ project_slug }} - Stage{% endblock %}
+
+{% block topnav %}
+<a href="/{{ org_slug }}">{{ org_slug }}</a>
+<span class="sep">/</span>
+<a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+<span class="sep">/</span>
+compare
+{% endblock %}
+
+{% block rail_project %}
+<a class="rail-project active" href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+{% endblock %}
+
+{% block rail_nav %}
+<li class="rail-nav-item active"><a href="/{{ org_slug }}/{{ project_slug }}">Runs</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/sweeps">Sweeps</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/training">Training</a></li>
+<li class="rail-nav-item"><a href="#">Comparisons</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="compare-layout" id="compareRoot">
+
+  {% if run_id_a.is_empty() || run_id_b.is_empty() %}
+  <div class="compare-picker">
+    <h2>Compare two runs</h2>
+    <p class="muted">Select two runs from <a href="/{{ org_slug }}/{{ project_slug }}">the project page</a> using the checkboxes and press <kbd>c</kbd>, or paste run IDs below.</p>
+    <form class="compare-id-form" method="get" action="/{{ org_slug }}/{{ project_slug }}/compare">
+      <div class="form-row">
+        <label class="form-label">Run A</label>
+        <input class="form-input mono" type="text" name="a" placeholder="019542a3-..." value="{{ run_id_a }}" required>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Run B</label>
+        <input class="form-input mono" type="text" name="b" placeholder="019542b0-..." value="{{ run_id_b }}" required>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Compare</button>
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <div class="compare-header">
+    <span class="compare-header-title">Compare runs</span>
+    <span class="compare-run-a mono muted">{{ run_id_a|truncate(8) }}</span>
+    <span class="compare-vs muted">vs</span>
+    <span class="compare-run-b mono muted">{{ run_id_b|truncate(8) }}</span>
+  </div>
+
+  <div class="compare-body" id="compareBody">
+    <div class="compare-loading muted">Loading runs…</div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% if !run_id_a.is_empty() && !run_id_b.is_empty() %}
+<script>
+(function () {
+  const runIdA = {{ run_id_a|json }};
+  const runIdB = {{ run_id_b|json }};
+  const orgSlug = {{ org_slug|json }};
+  const projectSlug = {{ project_slug|json }};
+
+  async function loadRun(id) {
+    const r = await fetch(`/v1/runs/${id}`);
+    if (!r.ok) throw new Error(`run ${id}: ${r.status}`);
+    return r.json();
+  }
+
+  async function loadEvents(id) {
+    const r = await fetch(`/v1/runs/${id}/events`);
+    if (!r.ok) return [];
+    return r.json();
+  }
+
+  function metaRow(label, a, b) {
+    const differ = JSON.stringify(a) !== JSON.stringify(b);
+    const cls = differ ? ' class="compare-row-diff"' : '';
+    return `<tr${cls}><td class="compare-field muted">${label}</td><td>${a ?? '<span class=muted>—</span>'}</td><td>${b ?? '<span class=muted>—</span>'}</td></tr>`;
+  }
+
+  function scoreRows(outcomeA, outcomeB) {
+    const keys = new Set([
+      ...Object.keys(outcomeA?.scores ?? {}),
+      ...Object.keys(outcomeB?.scores ?? {}),
+    ]);
+    return [...keys].map(k => metaRow(k, outcomeA?.scores?.[k]?.toFixed(3), outcomeB?.scores?.[k]?.toFixed(3))).join('');
+  }
+
+  function eventCell(ev) {
+    if (!ev) return '<td class="compare-event-empty"></td>';
+    const cls = `compare-event-kind-${ev.kind}`;
+    const text = ev.payload?.text || ev.payload?.note || ev.payload?.name || ev.kind;
+    return `<td class="compare-event ${cls}"><span class="compare-kind mono">${ev.kind}</span> <span class="muted">${escHtml(String(text).slice(0, 120))}</span></td>`;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  async function render() {
+    const [runA, runB, evA, evB] = await Promise.all([
+      loadRun(runIdA), loadRun(runIdB), loadEvents(runIdA), loadEvents(runIdB),
+    ]);
+
+    const maxSeq = Math.max(
+      evA.length ? evA[evA.length - 1].sequence_number : 0,
+      evB.length ? evB[evB.length - 1].sequence_number : 0,
+    );
+
+    const mapA = Object.fromEntries(evA.map(e => [e.sequence_number, e]));
+    const mapB = Object.fromEntries(evB.map(e => [e.sequence_number, e]));
+
+    let firstDivergence = null;
+    let identicalCount = 0;
+
+    const rows = [];
+    for (let i = 1; i <= maxSeq; i++) {
+      const a = mapA[i], b = mapB[i];
+      const same = a && b && a.kind === b.kind && JSON.stringify(a.payload) === JSON.stringify(b.payload);
+      if (same) { identicalCount++; } else if (firstDivergence === null) { firstDivergence = i; }
+      const rowCls = same ? 'compare-tick-same' : 'compare-tick-diff';
+      rows.push(`<tr class="${rowCls}"><td class="compare-seq muted">${i}</td>${eventCell(a)}${eventCell(b)}</tr>`);
+    }
+
+    const metaTable = `
+      <table class="compare-meta-table">
+        <thead><tr><th></th><th><a class="mono" href="/${orgSlug}/${projectSlug}/runs/${runIdA}">${runIdA.slice(0,8)}</a></th><th><a class="mono" href="/${orgSlug}/${projectSlug}/runs/${runIdB}">${runIdB.slice(0,8)}</a></th></tr></thead>
+        <tbody>
+          ${metaRow('scenario', runA.scenario, runB.scenario)}
+          ${metaRow('world', runA.world, runB.world)}
+          ${metaRow('backend', runA.backend, runB.backend)}
+          ${metaRow('status', runA.status, runB.status)}
+          ${scoreRows(runA.outcome, runB.outcome)}
+          ${metaRow('wall_time_ms', runA.wall_time_ms, runB.wall_time_ms)}
+        </tbody>
+      </table>`;
+
+    const summary = `
+      <div class="compare-summary muted">
+        ${identicalCount} of ${maxSeq} events identical.
+        ${firstDivergence ? `Diverged at tick ${firstDivergence}.` : 'No divergence.'}
+      </div>`;
+
+    const timeline = `
+      <table class="compare-timeline-table">
+        <thead><tr><th class="compare-seq">#</th><th>Run A</th><th>Run B</th></tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>`;
+
+    document.getElementById('compareBody').innerHTML = metaTable + summary + timeline;
+  }
+
+  render().catch(err => {
+    document.getElementById('compareBody').innerHTML = `<div class="compare-error">Failed to load: ${err.message}</div>`;
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

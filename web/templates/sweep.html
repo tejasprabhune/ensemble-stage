@@ -21,11 +21,10 @@ sweeps
 <li class="rail-nav-item active"><a href="/{{ org_slug }}/{{ project_slug }}/sweeps">Sweeps</a></li>
 <li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/training">Training</a></li>
 <li class="rail-nav-item"><a href="#">Comparisons</a></li>
-<li class="rail-nav-item"><a href="#">Settings</a></li>
 {% endblock %}
 
 {% block content %}
-<div class="stub-layout">
+<div class="sweep-layout">
 
   <div class="entity-header">
     <div class="entity-header-row">
@@ -40,19 +39,154 @@ sweeps
       {% if ended_at != "—" %}
       <span class="meta-pair"><span class="meta-label">Ended</span> <span class="meta-value">{{ ended_at }}</span></span>
       {% endif %}
+      {% if config_summary != "" %}
+      <span class="meta-pair"><span class="meta-label">Config</span> <span class="meta-value">{{ config_summary }}</span></span>
+      {% endif %}
     </div>
-    {% if config_summary != "" %}
-    <div class="entity-header-config">
-      <span class="meta-label">Config</span>
-      <code class="config-summary">{{ config_summary }}</code>
-    </div>
-    {% endif %}
   </div>
 
-  <div class="stub-body">
-    <p class="stub-notice">The sweep dashboard ships in the next session.</p>
-    <p class="muted" style="font-size:var(--text-sm)">It will show aggregated scores across all runs in this sweep, per-scenario breakdowns, and a comparison of backends.</p>
+  <div class="sweep-kpi-strip" id="sweepKpi">
+    <div class="kpi-cell"><span class="kpi-value" id="kpiTotal">—</span><span class="kpi-label">runs</span></div>
+    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiCompleted">—</span><span class="kpi-label">completed</span></div>
+    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiFailed">—</span><span class="kpi-label">failed</span></div>
+    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiRunning">—</span><span class="kpi-label">running</span></div>
+    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiCost">—</span><span class="kpi-label">total cost</span></div>
+    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiScore">—</span><span class="kpi-label">mean score</span></div>
+  </div>
+
+  <div id="sweepMatrix" class="sweep-matrix-wrap muted">Loading runs…</div>
+
+  <div id="sweepRunsTable" class="sweep-runs-wrap" hidden>
+    <h3 class="sweep-runs-heading">All runs</h3>
+    <table class="runs-table">
+      <thead>
+        <tr>
+          <th class="col-id">ID</th>
+          <th>Scenario</th>
+          <th>World</th>
+          <th>Model</th>
+          <th>Status</th>
+          <th>Outcome</th>
+          <th class="col-cost">Cost</th>
+          <th class="col-duration">Duration</th>
+        </tr>
+      </thead>
+      <tbody id="sweepRunRows"></tbody>
+    </table>
   </div>
 
 </div>
+
+<script>
+(function () {
+  const sweepId = {{ sweep_id|json }};
+  const orgSlug = {{ org_slug|json }};
+  const projectSlug = {{ project_slug|json }};
+
+  async function load() {
+    const r = await fetch(`/v1/sweeps/${sweepId}/runs`);
+    if (!r.ok) {
+      document.getElementById('sweepMatrix').textContent = 'Could not load runs.';
+      return;
+    }
+    const { runs } = await r.json();
+
+    // KPI strip
+    const completed = runs.filter(r => r.status === 'completed');
+    const failed = runs.filter(r => r.status === 'failed');
+    const running = runs.filter(r => r.status === 'running' || r.status === 'queued');
+    const totalCost = completed.reduce((s, r) => s + (r.total_cost?.usd ?? 0), 0);
+    const scores = completed
+      .map(r => Object.values(r.outcome?.scores ?? {})[0])
+      .filter(v => typeof v === 'number');
+    const meanScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
+    document.getElementById('kpiTotal').textContent = runs.length;
+    document.getElementById('kpiCompleted').textContent = completed.length;
+    document.getElementById('kpiFailed').textContent = failed.length;
+    document.getElementById('kpiRunning').textContent = running.length;
+    document.getElementById('kpiCost').textContent = totalCost > 0 ? `$${totalCost.toFixed(4)}` : '—';
+    document.getElementById('kpiScore').textContent = meanScore != null ? meanScore.toFixed(3) : '—';
+
+    // Matrix: pick axes from the variation across runs
+    const axes = inferAxes(runs);
+    renderMatrix(runs, axes);
+
+    // Flat runs table
+    renderRunsTable(runs);
+    document.getElementById('sweepRunsTable').hidden = false;
+  }
+
+  function inferAxes(runs) {
+    const candidates = ['backend', 'scenario', 'world'];
+    const varied = candidates.filter(k => {
+      const vals = new Set(runs.map(r => r[k]));
+      return vals.size > 1;
+    });
+    if (varied.length >= 2) return [varied[0], varied[1]];
+    if (varied.length === 1) return [varied[0], 'scenario'];
+    return ['backend', 'scenario'];
+  }
+
+  function renderMatrix(runs, [rowAxis, colAxis]) {
+    const rowVals = [...new Set(runs.map(r => r[rowAxis]))].sort();
+    const colVals = [...new Set(runs.map(r => r[colAxis]))].sort();
+
+    let html = `<div class="matrix-axis-label">rows: ${rowAxis} &nbsp;&nbsp; cols: ${colAxis}</div>`;
+    html += '<table class="sweep-matrix">';
+    html += '<thead><tr><th></th>' + colVals.map(v => `<th class="matrix-col-hdr">${escHtml(v)}</th>`).join('') + '</tr></thead>';
+    html += '<tbody>';
+    for (const rv of rowVals) {
+      html += `<tr><th class="matrix-row-hdr">${escHtml(rv)}</th>`;
+      for (const cv of colVals) {
+        const cell = runs.filter(r => r[rowAxis] === rv && r[colAxis] === cv);
+        html += renderCell(cell);
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    document.getElementById('sweepMatrix').innerHTML = html;
+  }
+
+  function renderCell(runs) {
+    if (!runs.length) return '<td class="matrix-cell matrix-cell-empty"></td>';
+    const allDone = runs.every(r => r.status === 'completed');
+    const allFailed = runs.every(r => r.status === 'failed');
+    const anyRunning = runs.some(r => r.status === 'running' || r.status === 'queued');
+    const cls = allDone ? 'matrix-cell-ok' : allFailed ? 'matrix-cell-fail' : anyRunning ? 'matrix-cell-running' : 'matrix-cell-mixed';
+    const scores = runs.map(r => Object.values(r.outcome?.scores ?? {})[0]).filter(v => typeof v === 'number');
+    const score = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2) : '';
+    const href = runs.length === 1 ? `/${orgSlug}/${projectSlug}/runs/${runs[0].id}` : '';
+    const inner = `<span class="matrix-dot ${cls}"></span>${score ? `<span class="matrix-score">${score}</span>` : ''}`;
+    return href
+      ? `<td class="matrix-cell"><a href="${href}">${inner}</a></td>`
+      : `<td class="matrix-cell">${inner}</td>`;
+  }
+
+  function renderRunsTable(runs) {
+    const rows = runs.map(r => {
+      const score = Object.values(r.outcome?.scores ?? {})[0];
+      const cost = r.total_cost?.usd != null ? `$${r.total_cost.usd.toFixed(4)}` : '—';
+      const dur = r.wall_time_ms != null ? `${(r.wall_time_ms/1000).toFixed(1)}s` : '—';
+      return `<tr>
+        <td class="col-id"><a class="mono" href="/${orgSlug}/${projectSlug}/runs/${r.id}">${r.id.slice(0,8)}</a></td>
+        <td>${escHtml(r.scenario)}</td>
+        <td>${escHtml(r.world)}</td>
+        <td>${escHtml(r.backend)}</td>
+        <td><span class="status-badge status-${r.status}">${r.status}</span></td>
+        <td>${score != null ? score.toFixed(3) : '—'}</td>
+        <td class="mono">${cost}</td>
+        <td class="mono">${dur}</td>
+      </tr>`;
+    });
+    document.getElementById('sweepRunRows').innerHTML = rows.join('');
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  load();
+})();
+</script>
 {% endblock %}
