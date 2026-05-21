@@ -1,0 +1,38 @@
+<div id="api-keys-list">
+{% if let Some(new_key) = new_key %}
+<div class="new-key-banner">
+  <strong>Save this key now.</strong> It will not be shown again.
+  <div class="new-key-display">
+    <code id="newKeyValue">{{ new_key }}</code>
+    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('newKeyValue').textContent).then(()=>{this.textContent='copied';setTimeout(()=>{this.textContent='copy'},2000)})">copy</button>
+  </div>
+</div>
+{% endif %}
+{% if keys.is_empty() %}
+<p class="muted">No API keys yet.</p>
+{% else %}
+<table class="keys-table">
+  <thead>
+    <tr><th>Name</th><th>Scope</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for key in keys %}
+    <tr>
+      <td>{{ key.name }}</td>
+      <td><code>{{ key.scope }}</code></td>
+      <td class="muted">{{ key.created_at }}</td>
+      <td class="muted">{{ key.last_used_at }}</td>
+      <td class="muted">{{ key.expires_at }}</td>
+      <td>
+        <button class="btn-revoke"
+          hx-delete="/me/keys/{{ key.id }}"
+          hx-target="#api-keys-list"
+          hx-swap="outerHTML"
+          hx-confirm="Revoke key '{{ key.name }}'?">Revoke</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+</div>

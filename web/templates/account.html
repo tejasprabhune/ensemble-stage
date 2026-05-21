@@ -19,16 +19,11 @@
       The raw key value is shown only once at creation time.
     </p>
 
-    <div id="api-keys-list"
-      hx-get="/v1/me/api_keys"
-      hx-trigger="load"
-      hx-swap="outerHTML">
-      <p class="muted">Loading keys…</p>
-    </div>
+    {% include "partials/api_keys_section.html" %}
 
     <form
       class="create-key-form"
-      hx-post="/v1/me/api_keys"
+      hx-post="/me/keys"
       hx-target="#api-keys-list"
       hx-swap="outerHTML"
       hx-on::after-request="this.reset()">

@@ -1,0 +1,36 @@
+{% if runs.is_empty() %}
+<tr class="table-empty">
+  <td colspan="11">
+    No runs yet. Start pushing runs from ensemble:
+    <pre class="empty-code">export STAGE_API_KEY=stage_sk_...
+export STAGE_BASE_URL={{ base_url }}
+# runs appear here automatically once the integration is configured.</pre>
+  </td>
+</tr>
+{% else %}
+{% for run in runs %}
+<tr class="run-row" data-run-id="{{ run.id }}" tabindex="0">
+  <td class="col-check"><input type="checkbox" aria-label="Select run" onclick="event.stopPropagation()"></td>
+  <td class="col-id"><a class="mono run-link" href="{{ run.detail_url }}">{{ run.id_short }}</a></td>
+  <td class="col-started">{{ run.started_at }}</td>
+  <td>{{ run.scenario }}</td>
+  <td>{{ run.world }}</td>
+  <td>{{ run.backend }}</td>
+  <td><span class="status-badge status-{{ run.status }}">{{ run.status }}</span></td>
+  <td class="col-outcome">{{ run.outcome }}</td>
+  <td class="col-cost mono">{{ run.cost }}</td>
+  <td class="col-duration mono">{{ run.duration }}</td>
+  <td class="col-nav"><a href="{{ run.detail_url }}" tabindex="-1" aria-label="Open">&#8594;</a></td>
+</tr>
+{% endfor %}
+{% if let Some(cursor) = next_cursor %}
+<tr class="load-more-row">
+  <td colspan="11">
+    <button class="load-more-btn"
+      hx-get="{{ partial_url }}?cursor={{ cursor }}{% if filter != "" %}&filter={{ filter }}{% endif %}&sort={{ sort }}"
+      hx-target="closest tr"
+      hx-swap="outerHTML">Load more</button>
+  </td>
+</tr>
+{% endif %}
+{% endif %}

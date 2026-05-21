@@ -17,12 +17,11 @@
   placeholder="Filter runs…"
   aria-label="Filter runs"
   autocomplete="off"
-  hx-get="/v1/projects/{{ org_slug }}/{{ project_slug }}/runs"
+  hx-get="/{{ org_slug }}/{{ project_slug }}/runs-partial"
   hx-trigger="input changed delay:300ms, search"
   hx-target="#runs-table-body"
   hx-swap="innerHTML"
   hx-include="[name='sort']"
-  hx-push-url="true"
 >
 {% endblock %}
 
@@ -43,12 +42,11 @@
 
   <div class="filter-bar" id="filterBar">
     <select name="sort" class="sort-select"
-      hx-get="/v1/projects/{{ org_slug }}/{{ project_slug }}/runs"
+      hx-get="/{{ org_slug }}/{{ project_slug }}/runs-partial"
       hx-trigger="change"
       hx-target="#runs-table-body"
       hx-swap="innerHTML"
-      hx-include="#filterInput"
-      hx-push-url="true">
+      hx-include="#filterInput">
       <option value="created_at:desc">Newest first</option>
       <option value="created_at:asc">Oldest first</option>
       <option value="wall_time_ms:asc">Fastest</option>
@@ -80,9 +78,7 @@
         </tr>
       </thead>
       <tbody id="runs-table-body">
-        <tr class="table-empty">
-          <td colspan="11">No runs yet. Push your first run with the ensemble-stage client.</td>
-        </tr>
+        {% include "partials/runs_rows.html" %}
       </tbody>
     </table>
   </div>
