@@ -270,7 +270,11 @@ fn format_outcome(outcome: Option<&Value>) -> String {
             format!("{k}={val}")
         })
         .collect();
-    if pairs.is_empty() { "—".into() } else { pairs.join(" ") }
+    if pairs.is_empty() {
+        "—".into()
+    } else {
+        pairs.join(" ")
+    }
 }
 
 fn summarize_sweep_config(config: &Value) -> String {
@@ -1127,10 +1131,17 @@ async fn update_settings(
 ) -> Result<axum::response::Response, AppError> {
     let public = form.public.as_deref() == Some("on") || form.public.as_deref() == Some("true");
     let name = form.name.trim().to_string();
-    let description = form.description.as_deref().filter(|s| !s.is_empty()).map(str::trim).map(str::to_string);
+    let description = form
+        .description
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(str::trim)
+        .map(str::to_string);
 
     if name.is_empty() || name.len() > 100 {
-        return Err(AppError::BadRequest("Name must be between 1 and 100 characters.".into()));
+        return Err(AppError::BadRequest(
+            "Name must be between 1 and 100 characters.".into(),
+        ));
     }
 
     let updated = sqlx::query_scalar::<_, i64>(
@@ -1156,7 +1167,10 @@ async fn update_settings(
         return Err(AppError::NotFound);
     }
 
-    Ok(axum::response::Redirect::to(&format!("/{org_slug}/{project_slug}/settings")).into_response())
+    Ok(
+        axum::response::Redirect::to(&format!("/{org_slug}/{project_slug}/settings"))
+            .into_response(),
+    )
 }
 
 #[derive(Deserialize)]
@@ -1171,7 +1185,9 @@ async fn delete_project(
     Form(form): Form<DeleteProjectForm>,
 ) -> Result<axum::response::Response, AppError> {
     if form.confirm_slug.trim() != project_slug {
-        return Err(AppError::BadRequest("Slug confirmation did not match.".into()));
+        return Err(AppError::BadRequest(
+            "Slug confirmation did not match.".into(),
+        ));
     }
 
     let deleted = sqlx::query_scalar::<_, i64>(
@@ -1224,7 +1240,10 @@ pub fn router() -> Router<AppState> {
         .route("/:org_slug/:project_slug/sweeps", get(sweeps_list))
         .route("/:org_slug/:project_slug/sweeps/:sweep_id", get(sweep))
         .route("/:org_slug/:project_slug/training", get(training_list))
-        .route("/:org_slug/:project_slug/training_runs/:id", get(training_run))
+        .route(
+            "/:org_slug/:project_slug/training_runs/:id",
+            get(training_run),
+        )
         .route("/:org_slug/:project_slug/compare", get(compare))
         .route(
             "/:org_slug/:project_slug/settings",

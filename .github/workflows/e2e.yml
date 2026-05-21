@@ -55,13 +55,13 @@ jobs:
         run: cargo install sqlx-cli --no-default-features --features postgres --quiet
 
       - name: Install Python test dependencies
-        run: uv pip install pytest pytest-playwright psycopg2-binary requests
+        run: uv pip install --system pytest pytest-playwright psycopg2-binary requests
 
       - name: Install Playwright Chromium
-        run: uv run playwright install chromium --with-deps
+        run: playwright install chromium --with-deps
 
       - name: Run E2E tests
-        run: python3 -m pytest tests/e2e/ -v --tb=short -q
+        run: python3 -m pytest tests/e2e/ -v --tb=short
         env:
           TEST_DATABASE_URL: postgres://stage:stage@localhost:5432/postgres
 
