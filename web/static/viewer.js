@@ -203,8 +203,10 @@
       if (e.payload.kind !== 'system') continue;
       const note = e.payload.note;
       if (typeof note !== 'string' || !note.includes('"grader"')) continue;
+      // Note format is either '{"kind":"grader",...}' or 'grader: {"kind":"grader",...}'
+      const jsonStr = note.startsWith('{') ? note : note.replace(/^[^{]*/, '');
       let obj;
-      try { obj = JSON.parse(note); } catch { continue; }
+      try { obj = JSON.parse(jsonStr); } catch { continue; }
       if (obj.kind !== 'grader' || !obj.scores) continue;
       const rows = [];
       for (const [k, v] of Object.entries(obj.scores)) {
