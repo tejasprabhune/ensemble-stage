@@ -259,8 +259,8 @@ def test_project(test_db, test_user, live_server):
         f"{live_server}/v1/projects/{org_slug}/{project_slug}/runs",
         headers={"Authorization": f"Bearer {test_user['api_key']}"},
         json={
-            "scenario": "plank.smoke",
-            "world": "plank",
+            "scenario": "agora.smoke",
+            "world": "agora",
             "backend": "mock",
         },
     )
@@ -305,8 +305,8 @@ def pushed_run(test_project, test_user, live_server):
         headers=headers,
         json={
             "id": run_id,
-            "scenario": "plank.refund_storm",
-            "world": "plank",
+            "scenario": "agora.refund_storm",
+            "world": "agora",
             "backend": "mock",
         },
     )
@@ -327,7 +327,7 @@ def pushed_run(test_project, test_user, live_server):
             ("tool_call", {"actor": "rep1", "message_id": "m2", "payload": {"kind": "tool_call", "name": "lookup_user", "args": {"user_id": "u-alice"}}, "tick": 2, "ts_ms": 1200}),
             ("tool_result", {"actor": "rep1", "message_id": "m2", "payload": {"kind": "tool_result", "name": "lookup_user", "result": {"data": {"id": "u-alice", "plan": "team"}}}, "tick": 3, "ts_ms": 1300}),
             ("agent_message", {"actor": "rep1", "message_id": "m3", "payload": {"kind": "agent_message", "text": "I see your account. Let me check your billing."}, "tick": 4, "ts_ms": 1400}),
-            ("system", {"actor": None, "message_id": None, "payload": {"kind": "system", "note": 'grader: {"kind":"grader","scenario":"plank.refund_storm","scores":{"alice_refund_resolved":0.0,"bob_no_unsolicited_upgrade":1.0}}'}, "tick": 5, "ts_ms": 1500}),
+            ("system", {"actor": None, "message_id": None, "payload": {"kind": "system", "note": 'grader: {"kind":"grader","scenario":"agora.refund_storm","scores":{"alice_refund_resolved":0.0,"bob_no_unsolicited_upgrade":1.0}}'}, "tick": 5, "ts_ms": 1500}),
         ])
     ]
     resp = requests.post(
@@ -369,7 +369,7 @@ def pushed_sweep(test_project, test_user, live_server):
     resp = requests.post(
         f"{live_server}/v1/projects/{org}/{proj}/sweeps",
         headers=headers,
-        json={"config": {"scenarios": ["plank.smoke"], "backends": ["mock", "anthropic"], "n_trials": 1}},
+        json={"config": {"scenarios": ["agora.smoke"], "backends": ["mock", "anthropic"], "n_trials": 1}},
     )
     assert resp.status_code == 201, resp.text
     sweep_id = resp.json()["id"]
@@ -380,7 +380,7 @@ def pushed_sweep(test_project, test_user, live_server):
         requests.post(
             f"{live_server}/v1/projects/{org}/{proj}/runs",
             headers=headers,
-            json={"id": run_id, "scenario": "plank.smoke", "world": "plank", "backend": backend, "sweep_id": sweep_id},
+            json={"id": run_id, "scenario": "agora.smoke", "world": "agora", "backend": backend, "sweep_id": sweep_id},
         )
         requests.post(
             f"{live_server}/v1/runs/{run_id}/status",
