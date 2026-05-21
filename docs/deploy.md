@@ -52,12 +52,19 @@ fly secrets set \
 
 **Run migrations:**
 
-```
-fly ssh console --app ensemble-stage \
-  -C "sqlx migrate run --source ops/migrations"
+The runtime image is minimal (no `sqlx` binary), so migrations are applied by proxying the Fly Postgres port locally and running the SQL with a local `psql`:
+
+```bash
+fly proxy 5454:5432 --app ensemble-stage-db &
+PGPASSWORD=<db_password> psql -h localhost -p 5454 \
+  -U ensemble_stage -d ensemble_stage \
+  -f ops/migrations/001_initial_schema.sql
+kill %1
 ```
 
-Run this after the first deploy and after every deploy that adds a new migration file. The CI workflow intentionally does not run migrations automatically; schema changes are applied by a human before the new binary starts serving traffic.
+The database password is in the `DATABASE_URL` secret (`fly secrets list --app ensemble-stage`). For subsequent migrations, increment the file number and run the new file only.
+
+The CI workflow intentionally does not run migrations automatically; schema changes are applied by a human before the new binary starts serving traffic.
 
 **First deploy:**
 
