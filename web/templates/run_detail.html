@@ -8,7 +8,9 @@
   <span class="sep">/</span>
   <a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
   <span class="sep">/</span>
-  <strong class="mono">{{ run_id }}</strong>
+  runs
+  <span class="sep">/</span>
+  <span class="mono muted">{{ run_id }}</span>
 </span>
 {% endblock %}
 
@@ -19,37 +21,50 @@
     <section class="meta-section">
       <h4>Run</h4>
       <dl class="meta-list">
-        <dt>ID</dt>       <dd class="mono" id="metaId">{{ run_id }}</dd>
-        <dt>Status</dt>   <dd id="metaStatus">loading…</dd>
-        <dt>Scenario</dt> <dd id="metaScenario"></dd>
-        <dt>World</dt>    <dd id="metaWorld"></dd>
-        <dt>Backend</dt>  <dd id="metaBackend"></dd>
-        <dt>Started</dt>  <dd id="metaStarted"></dd>
-        <dt>Duration</dt> <dd id="metaDuration"></dd>
+        <dt>ID</dt>
+        <dd class="mono" id="metaId">{{ run_id }}</dd>
+        <dt>Status</dt>
+        <dd id="metaStatus"><span class="status-badge status-queued">loading</span></dd>
+        <dt>Scenario</dt>
+        <dd id="metaScenario" class="muted">—</dd>
+        <dt>World</dt>
+        <dd id="metaWorld" class="muted">—</dd>
+        <dt>Backend</dt>
+        <dd id="metaBackend" class="muted">—</dd>
+        <dt>Started</dt>
+        <dd id="metaStarted" class="muted">—</dd>
+        <dt>Duration</dt>
+        <dd id="metaDuration" class="muted">—</dd>
       </dl>
     </section>
 
-    <section class="meta-section">
+    <section class="meta-section" id="costSection">
       <h4>Cost</h4>
       <dl class="meta-list" id="costBreakdown">
-        <dt>Total</dt><dd id="metaCostTotal">—</dd>
+        <dt>Total</dt>
+        <dd id="metaCostTotal" class="muted">—</dd>
       </dl>
     </section>
 
-    <section class="meta-section">
+    <section class="meta-section" id="outcomeSection">
       <h4>Outcome</h4>
-      <pre class="outcome-pre" id="metaOutcome">—</pre>
+      <div id="metaOutcome" class="outcome-pre muted">—</div>
+    </section>
+
+    <section class="meta-section" id="metaSection">
+      <h4>Metadata</h4>
+      <div id="metaMetadata" class="outcome-pre muted">—</div>
     </section>
   </aside>
 
   <main class="run-main">
     <div class="viewer" id="traceViewer">
       <div class="viewer-controls">
-        <button id="prevBtn">&#8592; prev</button>
-        <input type="range" id="slider" min="0" max="0" value="0">
-        <button id="nextBtn">next &#8594;</button>
+        <button id="prevBtn" title="Previous event (←)">&#8592;</button>
+        <input type="range" id="slider" min="0" max="0" value="0" aria-label="Event position">
+        <button id="nextBtn" title="Next event (→)">&#8594;</button>
         <button id="playBtn">play</button>
-        <span id="tickLabel">0 / 0</span>
+        <span id="tickLabel" class="muted">0 / 0</span>
         <div class="viewer-tabs">
           <button class="viewer-tab active" id="tabTimeline">timeline</button>
           <button class="viewer-tab" id="tabChat">chat</button>
@@ -72,7 +87,67 @@
 </div>
 
 <script>
-  window.STAGE_RUN_ID = "{{ run_id }}";
+  // Populate sidebar from the run metadata endpoint.
+  (function () {
+    const runId = {{ run_id|json }};
+    const baseUrl = '';
+
+    async function loadMeta() {
+      try {
+        const res = await fetch(`${baseUrl}/v1/runs/${runId}`);
+        if (!res.ok) return;
+        const run = await res.json();
+
+        const statusEl = document.getElementById('metaStatus');
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="status-badge status-${run.status}">${run.status}</span>`;
+        }
+        setText('metaScenario', run.scenario);
+        setText('metaWorld', run.world);
+        setText('metaBackend', run.backend);
+        setText('metaStarted', run.started_at ? new Date(run.started_at).toLocaleString() : '—');
+        if (run.wall_time_ms != null) {
+          setText('metaDuration', formatMs(run.wall_time_ms));
+        }
+        if (run.total_cost) {
+          setText('metaCostTotal', formatCost(run.total_cost));
+        }
+        if (run.outcome) {
+          const el = document.getElementById('metaOutcome');
+          if (el) el.textContent = JSON.stringify(run.outcome, null, 2);
+        }
+        if (run.metadata && Object.keys(run.metadata).length > 0) {
+          const el = document.getElementById('metaMetadata');
+          if (el) el.textContent = JSON.stringify(run.metadata, null, 2);
+        }
+      } catch (_) {}
+    }
+
+    function setText(id, val) {
+      const el = document.getElementById(id);
+      if (el && val != null) { el.textContent = val; el.classList.remove('muted'); }
+    }
+
+    function formatMs(ms) {
+      if (ms < 1000) return `${ms}ms`;
+      if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+      const m = Math.floor(ms / 60000);
+      const s = Math.round((ms % 60000) / 1000);
+      return `${m}m ${s}s`;
+    }
+
+    function formatCost(cost) {
+      if (cost.usd != null) return `$${cost.usd.toFixed(4)}`;
+      return JSON.stringify(cost);
+    }
+
+    loadMeta();
+    // Refresh metadata every 5 seconds while the run may be live.
+    setInterval(loadMeta, 5000);
+  })();
+
+  window.STAGE_RUN_ID = {{ run_id|json }};
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
 <script src="/static/viewer.js" defer></script>
 {% endblock %}
