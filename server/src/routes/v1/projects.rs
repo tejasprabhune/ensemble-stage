@@ -353,8 +353,8 @@ pub async fn create_run(
 
     sqlx::query(
         r#"
-        INSERT INTO runs (id, project_id, sweep_id, scenario, world, backend, metadata, created_by_user_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO runs (id, project_id, sweep_id, scenario, world, backend, metadata, started_at, created_by_user_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
         "#,
     )
     .bind(run_id)
