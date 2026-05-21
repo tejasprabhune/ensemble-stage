@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Stage{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="/">stage</a>
+  <nav class="topnav">
+    {% block topnav %}{% endblock %}
+  </nav>
+  <div class="topbar-right">
+    <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9680;</button>
+    {% block auth_buttons %}
+      <a class="btn-signin" href="/auth/github/login">Sign in with GitHub</a>
+    {% endblock %}
+  </div>
+</header>
+
+<div class="page-body">
+  {% block content %}{% endblock %}
+</div>
+
+<div id="shortcuts-overlay" class="shortcuts-overlay" hidden>
+  <div class="shortcuts-dialog">
+    <div class="shortcuts-header">
+      <span>Keyboard shortcuts</span>
+      <button class="shortcuts-close" id="shortcutsClose">&#x2715;</button>
+    </div>
+    <table class="shortcuts-table">
+      <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous row</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>Open selected row</td></tr>
+      <tr><td><kbd>/</kbd></td><td>Focus filter</td></tr>
+      <tr><td><kbd>c</kbd></td><td>Compare selected runs</td></tr>
+      <tr><td><kbd>?</kbd></td><td>This help overlay</td></tr>
+    </table>
+  </div>
+</div>
+
+<script src="/static/app.js" defer></script>
+</body>
+</html>

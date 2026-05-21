@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Run {{ run_id }} - Stage{% endblock %}
+
+{% block topnav %}
+<span class="breadcrumb">
+  <a href="/{{ org_slug }}">{{ org_slug }}</a>
+  <span class="sep">/</span>
+  <a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+  <span class="sep">/</span>
+  <strong class="mono">{{ run_id }}</strong>
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="run-layout">
+
+  <aside class="run-sidebar">
+    <section class="meta-section">
+      <h4>Run</h4>
+      <dl class="meta-list">
+        <dt>ID</dt>       <dd class="mono" id="metaId">{{ run_id }}</dd>
+        <dt>Status</dt>   <dd id="metaStatus">loading…</dd>
+        <dt>Scenario</dt> <dd id="metaScenario"></dd>
+        <dt>World</dt>    <dd id="metaWorld"></dd>
+        <dt>Backend</dt>  <dd id="metaBackend"></dd>
+        <dt>Started</dt>  <dd id="metaStarted"></dd>
+        <dt>Duration</dt> <dd id="metaDuration"></dd>
+      </dl>
+    </section>
+
+    <section class="meta-section">
+      <h4>Cost</h4>
+      <dl class="meta-list" id="costBreakdown">
+        <dt>Total</dt><dd id="metaCostTotal">—</dd>
+      </dl>
+    </section>
+
+    <section class="meta-section">
+      <h4>Outcome</h4>
+      <pre class="outcome-pre" id="metaOutcome">—</pre>
+    </section>
+  </aside>
+
+  <main class="run-main">
+    <div class="viewer" id="traceViewer">
+      <div class="viewer-controls">
+        <button id="prevBtn">&#8592; prev</button>
+        <input type="range" id="slider" min="0" max="0" value="0">
+        <button id="nextBtn">next &#8594;</button>
+        <button id="playBtn">play</button>
+        <span id="tickLabel">0 / 0</span>
+        <div class="viewer-tabs">
+          <button class="viewer-tab active" id="tabTimeline">timeline</button>
+          <button class="viewer-tab" id="tabChat">chat</button>
+        </div>
+        <span class="viewer-trace-label" id="traceLabel"></span>
+      </div>
+
+      <div id="timelineStage" class="viewer-stage">
+        <div class="panel" id="messagesPanel"><h4>actors</h4></div>
+        <div class="panel" id="toolsPanel"><h4>tool calls</h4></div>
+        <div class="panel" id="diffPanel"><h4>state changes</h4></div>
+      </div>
+
+      <div id="chatStage" class="chat-stage" style="display:none">
+        <div class="chat-feed" id="chatFeed"></div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  window.STAGE_RUN_ID = "{{ run_id }}";
+</script>
+<script src="/static/viewer.js" defer></script>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Training run {{ training_run_id }} - Stage{% endblock %}
+
+{% block topnav %}
+<span class="breadcrumb">
+  <a href="/{{ org_slug }}">{{ org_slug }}</a>
+  <span class="sep">/</span>
+  <a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+  <span class="sep">/</span>
+  training /
+  <strong class="mono">{{ training_run_id }}</strong>
+</span>
+{% endblock %}
+
+{% block content %}
+<main class="stub-page">
+  <h2>Training run</h2>
+  <p class="mono muted">{{ training_run_id }}</p>
+  <p>[stub: training run detail view coming soon]</p>
+</main>
+{% endblock %}

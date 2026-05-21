@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Account - Stage{% endblock %}
+
+{% block content %}
+<main class="account-page">
+  <h1>Account</h1>
+
+  <section class="account-section">
+    <h2>API keys</h2>
+    <p>
+      API keys authorize the ensemble integration to push run data to Stage.
+      A key with <code>push</code> scope can create runs and append events.
+      A key with <code>admin</code> scope can additionally manage projects.
+    </p>
+
+    <div id="api-keys-list"
+      hx-get="/v1/me/api_keys"
+      hx-trigger="load"
+      hx-swap="innerHTML">
+      <p class="muted">Loading…</p>
+    </div>
+
+    <form class="create-key-form"
+      hx-post="/v1/me/api_keys"
+      hx-target="#api-keys-list"
+      hx-swap="innerHTML">
+      <input type="text" name="name" placeholder="Key name (e.g. workstation)" required>
+      <select name="scope">
+        <option value="push">push</option>
+        <option value="admin">admin</option>
+      </select>
+      <button type="submit">Create key</button>
+    </form>
+  </section>
+
+</main>
+{% endblock %}

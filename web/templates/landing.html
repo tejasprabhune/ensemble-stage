@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Stage{% endblock %}
+
+{% block content %}
+<main class="landing">
+  <section class="landing-hero">
+    <h1>Stage</h1>
+    <p class="lead">
+      [copy: one-paragraph description of Stage as the observability and tracking
+      service for Ensemble. Explain what researchers use it for: pushing run data,
+      watching evaluations happen in real time, comparing runs across sweeps,
+      tracking training progress.]
+    </p>
+    <a class="btn-primary" href="/auth/github/login">Sign in with GitHub</a>
+  </section>
+
+  <section class="landing-features">
+    <div class="feature-card">
+      <h3>Run tracking</h3>
+      <p>[copy: brief description of run tracking and the trace viewer.]</p>
+    </div>
+    <div class="feature-card">
+      <h3>Sweep dashboards</h3>
+      <p>[copy: brief description of sweep view.]</p>
+    </div>
+    <div class="feature-card">
+      <h3>Training runs</h3>
+      <p>[copy: brief description of training run tracking and metric plots.]</p>
+    </div>
+  </section>
+</main>
+{% endblock %}
