@@ -186,3 +186,49 @@ pub async fn update_status(
 
     Ok(Json(serde_json::json!({ "ok": true })))
 }
+
+pub async fn cancel_sweep(
+    State(state): State<AppState>,
+    maybe_user: MaybeUser,
+    maybe_key: MaybeApiKey,
+    Path(sweep_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let user_id = maybe_user
+        .0
+        .as_ref()
+        .map(|u| u.user_id)
+        .or_else(|| maybe_key.0.as_ref().map(|k| k.user_id))
+        .ok_or(AppError::Unauthorized)?;
+
+    let project_id: i64 = sqlx::query_scalar(
+        "SELECT project_id FROM sweeps WHERE id = $1 AND status = 'running'::sweep_status",
+    )
+    .bind(sweep_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or(AppError::NotFound)?;
+
+    let is_member: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM org_members om JOIN projects p ON p.org_id = om.org_id WHERE p.id = $1 AND om.user_id = $2)",
+    )
+    .bind(project_id)
+    .bind(user_id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if !is_member {
+        return Err(AppError::Forbidden);
+    }
+
+    sqlx::query(
+        "UPDATE sweeps SET status = 'cancelled'::sweep_status, ended_at = NOW() WHERE id = $1",
+    )
+    .bind(sweep_id)
+    .execute(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}

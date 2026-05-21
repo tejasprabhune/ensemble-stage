@@ -48,6 +48,7 @@ pub fn router() -> Router<AppState> {
             get(orgs::get_sweep_runs).post(sweeps::register_run),
         )
         .route("/sweeps/:sweep_id/status", post(sweeps::update_status))
+        .route("/sweeps/:sweep_id/cancel", post(sweeps::cancel_sweep))
         // training run endpoints
         .route("/training_runs/:id", get(training_runs::get_training_run))
         .route(
