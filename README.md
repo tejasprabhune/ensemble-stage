@@ -14,18 +14,20 @@ The push-to-view path is fully operational. A researcher with the ensemble integ
 
 What works:
 
-- GitHub OAuth login and session cookies
-- API key creation and verification (push and admin scope)
+- Sign in with GitHub; after OAuth the user lands on their personal org page
+- Project creation form on the org page (no database access needed)
+- API key creation with expiration date, post-creation banner, inline revoke confirmation
 - All push endpoints: create run, append events, update run status, create sweep, register sweep child runs, update sweep status, create training run, append training metrics, update training run status
-- All read endpoints: project metadata, runs list with filter and sort, run detail, events with polling cursor, sweep, training run
-- Project home page server-renders the runs table with live data; filter and sort update the table via HTMX without a full page reload; pagination loads additional rows
-- Run detail page populates metadata and streams events via the trace viewer
-- Account page lists API keys and supports creation and revocation
+- All read endpoints: project metadata, runs list with filter and sort, run detail, events with polling cursor, sweep, training run, sweep child runs, training metrics
+- Project home page server-renders the runs table; empty state shows a pre-filled install snippet
+- Run detail page server-renders metadata and streams events via the trace viewer
+- Sweep dashboard: KPI strip, matrix view with inferred axes, flat child runs table
+- Training run page: SVG line charts per metric, polls while running, final metrics table
+- Comparison view: metadata table with diff highlighting, side-by-side event timeline
+- Keyboard shortcuts: j/k navigation, Enter to open, / to focus filter, c to compare two selected runs
 
 What ships in the next session:
 
-- Project creation web form (currently requires a direct database insert)
-- Comparison view (selecting multiple runs for side-by-side trace comparison)
-- Sweep dashboard with aggregated statistics across sweep runs
-- Training run detail page with loss curves
-- Share tokens for read-only project access without a login
+- Share tokens for read-only project access via URL
+- Project settings (rename, change visibility)
+- Multi-org and team membership management

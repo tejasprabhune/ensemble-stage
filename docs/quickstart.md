@@ -1,106 +1,70 @@
 # Getting started with Stage
 
-Stage records runs from ensemble scenarios and lets you browse traces, compare outcomes, and monitor training jobs through a web UI. This guide walks you from a fresh Stage server to having a real run visible in the trace viewer.
+Stage records runs from ensemble scenarios and lets you browse traces, compare outcomes, and monitor training jobs through a web UI. This guide walks you from a fresh account to having a run visible in the trace viewer.
 
-By the end you will have signed in, created an API key, pushed a run with a handful of events, and confirmed that the run detail page shows the trace and the outcome scores.
-
-## Before you begin
-
-You need a Stage server. If you are running one locally for development, see [docs/development.md](development.md) for setup instructions. If someone has already deployed Stage for your team, get the base URL from them.
-
-The examples below use `http://localhost:3000`. Replace that with your server's URL wherever it appears.
+By the end you will have signed in, created a project, created an API key, pushed a run with a handful of events, and confirmed that the run detail page shows the trace and the outcome scores.
 
 ## Sign in
 
-Navigate to the server in your browser. The landing page has a "Sign in with GitHub" button. Clicking it redirects you to GitHub's OAuth authorization page. After you approve, GitHub redirects back to Stage, which creates your account (using your GitHub login as your personal org slug) and sets a session cookie. You are now signed in.
-
-Your personal org is named after your GitHub login. All projects you create live under that org by default.
-
-## Create an API key
-
-The ensemble integration authenticates with a push-scoped API key, not with your browser session. Go to `/me` (there is a link in the top-right corner of every page) and use the key creation form. Give the key a name you will recognize later -- "laptop" or "workstation" works -- and leave the scope as "push".
-
-After you click "Create key", Stage shows the raw key value once. Copy it now; it cannot be recovered after you close the page. The server stores only a SHA-256 hash.
-
-The key looks like `stage_sk_` followed by 64 hex characters. Set it in your environment:
-
-```bash
-export ENSEMBLE_STAGE_API_KEY=stage_sk_...
-export ENSEMBLE_STAGE_BASE_URL=http://localhost:3000
-```
+Navigate to the Stage server in your browser. The landing page has a "Sign in with GitHub" button. After you authorize, GitHub redirects back to Stage, which creates your account using your GitHub login as your personal org slug. You land on your personal org page.
 
 ## Create a project
 
-Stage does not yet have a web form for project creation. Until that ships, create one directly in the database. Connect to the database your Stage server is using and run:
+Your personal org page shows an inline form. Fill in a slug (lowercase letters, digits, and hyphens; for example `experiments`), a display name, and optionally a description. Check "Public" if you want the project visible without sign-in. Click "Create project."
 
-```sql
--- Find your org's ID first.
-SELECT id FROM orgs WHERE slug = 'your-github-login';
+Stage redirects you to the new project page at `/{your-login}/experiments`.
 
--- Create the project under that org.
-INSERT INTO projects (org_id, slug, name, public)
-VALUES (<org_id>, 'my-project', 'My Project', true);
-```
+## Create an API key
 
-Replace `your-github-login` with your GitHub username (the personal org slug from sign-in) and choose a slug for the project. The slug appears in the URL and in the `ENSEMBLE_STAGE_PROJECT` environment variable.
+Go to `/me` (the link is in the top-right corner of every page). Enter a name for the key (for example "laptop"), leave the scope as "push", and click "Create key."
 
-```bash
-export ENSEMBLE_STAGE_PROJECT=your-github-login/my-project
-```
+The raw key value is shown exactly once in a banner. Copy it now. The server stores only a SHA-256 hash; the value cannot be recovered after you dismiss the banner.
 
-## Push your first run
+## Configure ensemble
 
-The repository includes a smoke-test script that pushes one synthetic run with seven events and prints the run URL.
-
-Install the integration package (requires `uv`):
+Set these variables in your shell:
 
 ```bash
-cd integration
-uv sync
-cd ..
+export ENSEMBLE_STAGE_API_KEY="stage_sk_..."  # the key you just copied
+export ENSEMBLE_STAGE_PROJECT="your-login/experiments"
 ```
 
-Run the test:
+If you are pushing to a self-hosted server instead of the production instance, also set:
 
 ```bash
-uv run python integration/scripts/smoke_test.py
+export ENSEMBLE_STAGE_BASE_URL="https://your-server.example.com"
 ```
 
-If the environment variables above are set, the script uses them automatically. Expected output:
+The project page shows a pre-filled snippet with these variables. If you skipped creating a key, the snippet links you back to `/me` first.
 
-```
-Creating run on http://localhost:3000 in project your-github-login/my-project …
-  run id:  019542a3-4e7b-7000-8e1d-3f9a1c2d5e6f
-  run url: http://localhost:3000/your-github-login/my-project/runs/019542a3-...
-  status -> running
-  pushed 7 events
-  status -> completed
+## Push a first run
 
-Final status: completed
-Outcome:      {"scores": {"correctness": 1.0}}
+With the environment variables set, run any ensemble scenario:
 
-Open the trace viewer:
-  http://localhost:3000/your-github-login/my-project/runs/019542a3-...
-
-Smoke test passed.
+```bash
+ensemble run plank.refund_storm
 ```
 
-Open the run URL in your browser.
+The ensemble integration prints a run URL before the scenario starts:
 
-## What you see
+```
+Stage:  https://ensemble-stage.fly.dev/your-login/experiments/runs/019542a3-...
+```
 
-The run detail page has three areas.
+Open the URL. The trace viewer shows events streaming in as the scenario runs. After the run completes, the page shows the outcome scores, cost breakdown, and full event timeline.
 
-The header bar shows the run's scenario name, world, backend (model), and status. While a run is live its status reads "running" and the page polls the server every two seconds. When the run completes, the status updates automatically and polling stops.
+## Verify in the UI
 
-The center pane is the trace viewer. It shows each event as a tile on a timeline. The viewer distinguishes actors (agents and users), tool calls and their results, state changes, and cost records. The chat tab shows the same events as a conversation thread, which is often easier to read when you are looking at a dialogue-heavy scenario.
+Refresh the project page. The run appears in the table. Click the ID to open the run detail page. Click another run, select both with the checkboxes in the table, and press `c` to open the comparison view.
 
-The right sidebar shows cost, outcome scores, metadata, and -- once the next session's work is complete -- actors with their hidden state and predicates.
+## Smoke test without ensemble
 
-## Where to go next
+If you want to verify Stage independently before wiring ensemble, use the smoke-test script:
 
-Once the smoke test passes, the natural next step is to route real ensemble runs through Stage. The [ensemble integration guide](ensemble-integration.md) covers installing the `ensemble_stage` package, configuring it for your project, and mapping ensemble events to Stage's event kinds.
+```bash
+cd integration && uv sync && cd ..
+ENSEMBLE_STAGE_API_KEY="stage_sk_..." ENSEMBLE_STAGE_PROJECT="your-login/experiments" \
+  uv run python integration/scripts/smoke_test.py
+```
 
-The [API reference](api.md) documents every endpoint in detail, including the full event payload schemas and the error shape. It is the authoritative contract for anything the integration or a custom client needs to do.
-
-For self-hosting or deploying to a team environment, see [docs/deploy.md](deploy.md).
+This pushes a synthetic run with seven events and prints the run URL.
