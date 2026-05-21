@@ -4,79 +4,28 @@
 
 {% block content %}
 
-<section class="hero">
-  <div class="hero-prose">
-    <h1>stage</h1>
-    <p class="hero-subhead">[copy: one sentence describing what Stage is for researchers]</p>
-    <div class="hero-body">
-      <p>[copy: first paragraph explaining what Stage records and why it matters to researchers who run evaluations. Keep it grounded in the actual workflow: pushing a run, watching it stream in, reviewing what happened.]</p>
-      <p>[copy: second paragraph on the broader value: being able to compare runs across a sweep, track what changed between training checkpoints, and share a trace with a collaborator by URL.]</p>
+<section class="landing-hero">
+  <div class="landing-prose">
+    <h1 class="landing-wordmark">stage</h1>
+    <p class="landing-lead">An observability record for ensemble runs.</p>
+    <div class="landing-body">
+      <p>When you run a scenario with Stage configured, every event streams as it happens -- actor messages, tool calls, state changes at each step, cost accumulations, and grader output. The run URL appears in your terminal before the scenario starts. You can open it in a browser and watch the trace build in real time, or come back later and step through each event as if the run were still live. A single run tells you not just what the outcome was but why: which tool call consumed the budget, where the agent's reasoning diverged, which predicate the grader caught.</p>
+      <p>Sweeps group runs that vary a parameter -- backend, seed, world -- so you can compare model behavior across conditions in one place. Training runs record the job alongside the evaluations that preceded it, so the record of what changed and whether it worked stays connected rather than scattered across logs.</p>
     </div>
-    <div class="hero-ctas">
-      <a class="btn btn-primary" href="/auth/github/login">Sign in with GitHub</a>
-      <a class="btn-secondary-link" href="/docs">Read the docs &nbsp;&#8594;</a>
-    </div>
-  </div>
-  <div class="hero-placeholder placeholder-box">
-    hero illustration
-  </div>
-</section>
-
-<section class="product-section">
-  <div>
-    <div class="product-section-header">
-      <h2>Track runs</h2>
-      <p class="product-section-caption">[copy: one-line caption for run tracking]</p>
-    </div>
-    <div class="product-section-prose">
-      <p>[copy: paragraph one on what run tracking records: each event in the evaluation, the actor messages, tool calls, state changes at each step, cost, and outcome.]</p>
-      <p>[copy: paragraph two on the trace viewer: stepping through events, switching between timeline and chat views, inspecting hidden state and predicates at any point in the run.]</p>
-      <p>[copy: paragraph three on practical use: what a researcher can learn from the trace that they cannot learn from a log file.]</p>
-    </div>
-  </div>
-  <div class="section-placeholder placeholder-box">
-    run tracking illustration
-  </div>
-</section>
-
-<section class="product-section">
-  <div>
-    <div class="product-section-header">
-      <h2>Compare and sweep</h2>
-      <p class="product-section-caption">[copy: one-line caption for sweep comparison]</p>
-    </div>
-    <div class="product-section-prose">
-      <p>[copy: paragraph one on sweeps: grouping related runs that vary one or more parameters, and what that structure lets you see about model behavior.]</p>
-      <p>[copy: paragraph two on the comparison view: putting two or more runs side by side to isolate what changed between them, with the diff table for state deltas.]</p>
-      <p>[copy: paragraph three on workflow: how a researcher sets up a sweep in code and what Stage shows when the runs come in.]</p>
-    </div>
-  </div>
-  <div class="section-placeholder placeholder-box">
-    sweep comparison illustration
-  </div>
-</section>
-
-<section class="product-section">
-  <div>
-    <div class="product-section-header">
-      <h2>Watch training</h2>
-      <p class="product-section-caption">[copy: one-line caption for training run tracking]</p>
-    </div>
-    <div class="product-section-prose">
-      <p>[copy: paragraph one on what a training run record contains: the model, base checkpoint, hyperparameters, and the link back to the eval runs that motivated this training job.]</p>
-      <p>[copy: paragraph two on how training and evaluation connect in Stage: starting from a training run, you can navigate to the eval sweep that followed it and see whether the training objective translated to behavioral improvement.]</p>
-      <p>[copy: paragraph three on longitudinal tracking: building up a history of training runs over time and what that record is useful for.]</p>
-    </div>
-  </div>
-  <div class="section-placeholder placeholder-box">
-    training run illustration
+    {% if let Some(_login) = user.github_login %}
+      <div class="landing-ctas">
+        <a class="btn btn-primary" href="/{{ _login }}">Go to your projects</a>
+      </div>
+    {% else %}
+      <div class="landing-ctas">
+        <a class="btn btn-primary" href="/auth/github/login">Sign in with GitHub</a>
+      </div>
+    {% endif %}
   </div>
 </section>
 
 <footer class="landing-footer">
-  <a href="https://github.com/ensemble-ai/stage">Repository</a>
-  <a href="/docs">Docs</a>
-  <span class="footer-spacer"></span>
+  <a href="https://github.com/tejasprabhune/ensemble-stage">Repository</a>
   <span>Stage is part of Ensemble.</span>
 </footer>
 

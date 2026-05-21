@@ -16,7 +16,6 @@
     stage
   </a>
   <div class="topbar-right">
-    <a href="/docs">Docs</a>
     {% if let Some(login) = user.github_login %}
       <a class="btn btn-sm" href="/{{ login }}">{{ login }}</a>
     {% else %}
