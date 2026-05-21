@@ -653,6 +653,22 @@ Valid values: `running`, `completed`, `failed`, `cancelled`.
 { "ok": true }
 ```
 
+### `POST /v1/sweeps/{sweep_id}/cancel`
+
+Cancel a sweep that is currently running. Sets status to `cancelled` and records `ended_at`. Runs that are already in flight are not killed; Stage only observes them. No new runs can be registered to a cancelled sweep.
+
+**Auth:** Session cookie (browser) or API key with `push` scope.
+
+**No request body required.**
+
+**Response `200`:**
+
+```json
+{ "ok": true }
+```
+
+Returns `404` if the sweep does not exist or is already in a terminal state (`completed`, `failed`, or `cancelled`).
+
 ## Training runs
 
 ### `GET /v1/training_runs/{id}`

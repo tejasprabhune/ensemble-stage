@@ -42,7 +42,7 @@ The project page shows a pre-filled snippet with these variables. If you skipped
 With the environment variables set, run any ensemble scenario:
 
 ```bash
-ensemble run plank.refund_storm
+ensemble run agora.refund_storm
 ```
 
 The ensemble integration prints a run URL before the scenario starts:
