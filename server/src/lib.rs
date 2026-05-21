@@ -29,7 +29,7 @@ pub fn app(config: Config, pool: PgPool) -> Router {
         .nest("/v1", routes::v1::router())
         .nest("/auth", routes::auth::router())
         .merge(routes::web::router())
-        .nest_service("/static", ServeDir::new("../web/static"))
+        .nest_service("/static", ServeDir::new("web/static"))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
