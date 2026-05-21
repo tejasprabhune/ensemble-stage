@@ -128,6 +128,7 @@
     else if (e.key === 'Enter') { e.preventDefault(); openFocusedRow(); }
     else if (e.key === '/')     { e.preventDefault(); const f = document.getElementById('filterInput'); if (f) { f.focus(); f.select(); } }
     else if (e.key === 'c')     { e.preventDefault(); compareSelected(); }
+    else if (e.key === 'd')     { e.preventDefault(); deleteSelected(); }
   });
 
   const checkAll     = document.getElementById('checkAll');
