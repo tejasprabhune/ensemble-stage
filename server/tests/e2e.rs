@@ -311,8 +311,7 @@ async fn push_to_view(pool: PgPool) {
     assert_eq!(run["metadata"]["seed"], 42);
 
     // Step 6: Fetch events and verify all 21 are present in order.
-    let (status, events) =
-        get_json(&router, &format!("/v1/runs/{run_id}/events"), &api_key).await;
+    let (status, events) = get_json(&router, &format!("/v1/runs/{run_id}/events"), &api_key).await;
     assert_eq!(status, StatusCode::OK, "get events: {events}");
     let events = events.as_array().expect("events should be an array");
     assert_eq!(
