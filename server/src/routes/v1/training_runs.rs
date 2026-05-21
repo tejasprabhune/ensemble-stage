@@ -28,7 +28,10 @@ pub async fn get_past_runs(
     .map_err(AppError::Database)?
     .ok_or(AppError::NotFound)?;
 
-    let caller_id = maybe_user.0.as_ref().map(|u| u.user_id)
+    let caller_id = maybe_user
+        .0
+        .as_ref()
+        .map(|u| u.user_id)
         .or_else(|| maybe_key.0.as_ref().map(|k| k.user_id));
     if !public {
         let uid = caller_id.ok_or(AppError::Forbidden)?;
@@ -40,10 +43,22 @@ pub async fn get_past_runs(
         .fetch_one(&state.pool)
         .await
         .map_err(AppError::Database)?;
-        if !is_member { return Err(AppError::Forbidden); }
+        if !is_member {
+            return Err(AppError::Forbidden);
+        }
     }
 
-    type PastRow = (Uuid, String, String, Option<Value>, Option<Value>, Option<String>, Option<DateTime<Utc>>, Option<DateTime<Utc>>, DateTime<Utc>);
+    type PastRow = (
+        Uuid,
+        String,
+        String,
+        Option<Value>,
+        Option<Value>,
+        Option<String>,
+        Option<DateTime<Utc>>,
+        Option<DateTime<Utc>>,
+        DateTime<Utc>,
+    );
     let past = sqlx::query_as::<_, PastRow>(
         r#"
         SELECT id, base_model, status::text, hyperparameters, final_metrics, artifact_uri,
@@ -91,7 +106,9 @@ pub async fn get_past_runs(
         }));
     }
 
-    Ok(Json(serde_json::json!({ "past_runs": runs, "persona_name": persona_name })))
+    Ok(Json(
+        serde_json::json!({ "past_runs": runs, "persona_name": persona_name }),
+    ))
 }
 
 pub async fn baseline_comparison(
@@ -110,7 +127,10 @@ pub async fn baseline_comparison(
     .map_err(AppError::Database)?
     .ok_or(AppError::NotFound)?;
 
-    let caller_id = maybe_user.0.as_ref().map(|u| u.user_id)
+    let caller_id = maybe_user
+        .0
+        .as_ref()
+        .map(|u| u.user_id)
         .or_else(|| maybe_key.0.as_ref().map(|k| k.user_id));
     if !public {
         let uid = caller_id.ok_or(AppError::Forbidden)?;
@@ -122,16 +142,20 @@ pub async fn baseline_comparison(
         .fetch_one(&state.pool)
         .await
         .map_err(AppError::Database)?;
-        if !is_member { return Err(AppError::Forbidden); }
+        if !is_member {
+            return Err(AppError::Forbidden);
+        }
     }
 
     let artifact_uri = match artifact_uri {
         Some(uri) if !uri.is_empty() => uri,
-        _ => return Ok(Json(serde_json::json!({
-            "linked": false,
-            "reason": "no_artifact",
-            "entries": [],
-        }))),
+        _ => {
+            return Ok(Json(serde_json::json!({
+                "linked": false,
+                "reason": "no_artifact",
+                "entries": [],
+            })))
+        }
     };
 
     type RunRow = (Uuid, String, String, Option<Value>);
@@ -159,9 +183,12 @@ pub async fn baseline_comparison(
     }
 
     use std::collections::HashMap;
-    let mut groups: HashMap<(String, String), Vec<(Uuid, Option<Value>)>> = HashMap::new();
+    type GroupKey = (String, String);
+    type GroupVal = Vec<(Uuid, Option<Value>)>;
+    let mut groups: HashMap<GroupKey, GroupVal> = HashMap::new();
     for (run_id, scenario, backend, outcome) in &trained_runs {
-        groups.entry((scenario.clone(), backend.clone()))
+        groups
+            .entry((scenario.clone(), backend.clone()))
             .or_default()
             .push((*run_id, outcome.clone()));
     }
@@ -188,28 +215,36 @@ pub async fn baseline_comparison(
         .await
         .map_err(AppError::Database)?;
 
-        let trained_scores: Vec<f64> = t_runs.iter()
+        let trained_scores: Vec<f64> = t_runs
+            .iter()
             .filter_map(|(_, outcome)| {
-                outcome.as_ref()
+                outcome
+                    .as_ref()
                     .and_then(|o| o.as_object())
                     .and_then(|m| m.values().next())
                     .and_then(|v| v.as_f64())
             })
             .collect();
 
-        let baseline_scores: Vec<f64> = baseline_runs.iter()
+        let baseline_scores: Vec<f64> = baseline_runs
+            .iter()
             .filter_map(|(_, _, _, outcome)| {
-                outcome.as_ref()
+                outcome
+                    .as_ref()
                     .and_then(|o| o.as_object())
                     .and_then(|m| m.values().next())
                     .and_then(|v| v.as_f64())
             })
             .collect();
 
-        let trained_mean = if trained_scores.is_empty() { None } else {
+        let trained_mean = if trained_scores.is_empty() {
+            None
+        } else {
             Some(trained_scores.iter().sum::<f64>() / trained_scores.len() as f64)
         };
-        let baseline_mean = if baseline_scores.is_empty() { None } else {
+        let baseline_mean = if baseline_scores.is_empty() {
+            None
+        } else {
             Some(baseline_scores.iter().sum::<f64>() / baseline_scores.len() as f64)
         };
         let delta = match (trained_mean, baseline_mean) {
