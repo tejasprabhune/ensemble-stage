@@ -47,6 +47,7 @@ pub struct ListRunsResponse {
 
 #[derive(Deserialize)]
 pub struct CreateRunBody {
+    pub id: Option<Uuid>,
     pub scenario: String,
     pub world: String,
     pub backend: String,
