@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ensemble-stage"
+version = "0.1.0"
+description = "ensemble integration for Stage observability"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "requests>=2.31",
+    "click>=8.1",
+]
+
+[project.scripts]
+ensemble-stage = "ensemble_stage.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ensemble_stage"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0",
+    "pytest-mock>=3.12",
+    "responses>=0.25",
+]
