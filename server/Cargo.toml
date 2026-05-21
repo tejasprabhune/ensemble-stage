@@ -23,6 +23,7 @@ askama = { version = "0.12", features = ["serde-json"] }
 askama_axum = "0.4"
 
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+base64 = "0.22"
 
 jsonwebtoken = "9"
 sha2 = "0.10"
