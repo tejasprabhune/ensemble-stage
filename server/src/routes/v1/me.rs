@@ -51,6 +51,16 @@ fn resolve_caller(maybe_user: &MaybeUser, maybe_key: &MaybeApiKey) -> Result<i64
         return Ok(user.user_id);
     }
     if let Some(key) = &maybe_key.0 {
+        return Ok(key.user_id);
+    }
+    Err(AppError::Unauthorized)
+}
+
+fn resolve_admin_caller(maybe_user: &MaybeUser, maybe_key: &MaybeApiKey) -> Result<i64, AppError> {
+    if let Some(user) = &maybe_user.0 {
+        return Ok(user.user_id);
+    }
+    if let Some(key) = &maybe_key.0 {
         if key.scope == ApiKeyScope::Admin {
             return Ok(key.user_id);
         }
@@ -93,7 +103,7 @@ pub async fn list_api_keys(
     maybe_user: MaybeUser,
     maybe_key: MaybeApiKey,
 ) -> Result<Json<Vec<ApiKeyResponse>>, AppError> {
-    let user_id = resolve_caller(&maybe_user, &maybe_key)?;
+    let user_id = resolve_admin_caller(&maybe_user, &maybe_key)?;
 
     let rows = sqlx::query_as::<
         _,
