@@ -22,6 +22,9 @@ pub enum AppError {
     #[error("bad request: {0}")]
     BadRequest(String),
 
+    #[error("conflict: {0}")]
+    Conflict(String),
+
     #[error("not implemented")]
     NotImplemented,
 
@@ -52,6 +55,7 @@ impl IntoResponse for AppError {
                 "insufficient permissions".to_string(),
             ),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg.clone()),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, "conflict", msg.clone()),
             AppError::NotImplemented => (
                 StatusCode::NOT_IMPLEMENTED,
                 "not_implemented",

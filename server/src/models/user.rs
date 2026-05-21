@@ -23,7 +23,7 @@ pub struct ApiKey {
     pub expires_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "api_key_scope", rename_all = "lowercase")]
 pub enum ApiKeyScope {
     Push,
