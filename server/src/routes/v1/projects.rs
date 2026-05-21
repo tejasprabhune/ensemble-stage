@@ -145,9 +145,9 @@ pub async fn get_project(
     maybe_key: MaybeApiKey,
     Path((org_slug, project_slug)): Path<(String, String)>,
 ) -> Result<Json<ProjectResponse>, AppError> {
-    let row = sqlx::query_as::<_, (i64, String, String, bool, Option<String>, DateTime<Utc>)>(
+    let row = sqlx::query_as::<_, (i64, i64, String, String, String, bool, Option<String>, DateTime<Utc>)>(
         r#"
-        SELECT p.id, o.slug, p.slug, p.public, p.description, p.created_at
+        SELECT p.id, p.org_id, o.slug, p.slug, p.name, p.public, p.description, p.created_at
         FROM projects p
         JOIN orgs o ON o.id = p.org_id
         WHERE o.slug = $1 AND p.slug = $2
@@ -160,14 +160,13 @@ pub async fn get_project(
     .map_err(AppError::Database)?
     .ok_or(AppError::NotFound)?;
 
-    let (project_id, org, proj, public, description, created_at) = row;
+    let (_project_id, org_id, org, proj, name, public, description, created_at) = row;
 
     if !public {
         let authed = maybe_user.0.is_some() || maybe_key.0.is_some();
         if !authed {
             return Err(AppError::Forbidden);
         }
-        // Verify caller has access to this project's org
         let caller_id = maybe_user
             .0
             .map(|u| u.user_id)
@@ -176,7 +175,7 @@ pub async fn get_project(
             let is_member: bool = sqlx::query_scalar(
                 "SELECT EXISTS(SELECT 1 FROM org_members WHERE org_id = $1 AND user_id = $2)",
             )
-            .bind(project_id)
+            .bind(org_id)
             .bind(uid)
             .fetch_one(&state.pool)
             .await
@@ -190,7 +189,7 @@ pub async fn get_project(
     Ok(Json(ProjectResponse {
         org_slug: org,
         project_slug: proj,
-        name: project_slug.clone(),
+        name,
         public,
         description,
         created_at,
