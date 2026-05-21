@@ -10,4 +10,5 @@ pub fn router() -> Router<AppState> {
         .route("/github/login", get(github::login))
         .route("/github/callback", get(github::callback))
         .route("/logout", post(github::logout))
+        .route("/cli", get(github::cli_login))
 }

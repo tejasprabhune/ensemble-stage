@@ -7,7 +7,7 @@ use chrono::Utc;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Deserialize;
 
-use crate::{auth::middleware::SessionClaims, AppError, AppState};
+use crate::{auth::middleware::hash_api_key, auth::middleware::SessionClaims, AppError, AppState};
 
 fn github_auth_url(state: &AppState, csrf: &str) -> String {
     format!(
@@ -27,6 +27,36 @@ pub async fn login(State(state): State<AppState>, jar: CookieJar) -> impl IntoRe
     csrf_cookie.set_max_age(time::Duration::minutes(10));
     (
         jar.add(csrf_cookie),
+        Redirect::to(&github_auth_url(&state, &csrf)),
+    )
+}
+
+#[derive(Deserialize)]
+pub struct CliLoginQuery {
+    pub callback: String,
+}
+
+pub async fn cli_login(
+    State(state): State<AppState>,
+    Query(query): Query<CliLoginQuery>,
+    jar: CookieJar,
+) -> impl IntoResponse {
+    let csrf = uuid::Uuid::new_v4().to_string();
+
+    let mut csrf_cookie = Cookie::new("stage_csrf", csrf.clone());
+    csrf_cookie.set_http_only(true);
+    csrf_cookie.set_same_site(SameSite::Lax);
+    csrf_cookie.set_path("/auth/github/callback");
+    csrf_cookie.set_max_age(time::Duration::minutes(10));
+
+    let mut cli_cookie = Cookie::new("stage_cli_callback", query.callback);
+    cli_cookie.set_http_only(true);
+    cli_cookie.set_same_site(SameSite::Lax);
+    cli_cookie.set_path("/auth/github/callback");
+    cli_cookie.set_max_age(time::Duration::minutes(10));
+
+    (
+        jar.add(csrf_cookie).add(cli_cookie),
         Redirect::to(&github_auth_url(&state, &csrf)),
     )
 }
@@ -53,7 +83,7 @@ pub async fn callback(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
     jar: CookieJar,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<axum::response::Response, AppError> {
     let csrf_cookie = jar.get("stage_csrf").map(|c| c.value().to_string());
     let csrf_state = query.state.as_deref().unwrap_or("");
     if csrf_cookie.as_deref() != Some(csrf_state) || csrf_state.is_empty() {
@@ -114,13 +144,45 @@ pub async fn callback(
     let remove_csrf = Cookie::build(("stage_csrf", ""))
         .path("/auth/github/callback")
         .build();
+    let remove_cli = Cookie::build(("stage_cli_callback", ""))
+        .path("/auth/github/callback")
+        .build();
+
+    let cli_callback = jar.get("stage_cli_callback").map(|c| c.value().to_string());
+
+    if let Some(callback_url) = cli_callback {
+        let raw_key = format!(
+            "stage_sk_{}{}",
+            uuid::Uuid::new_v4().as_simple(),
+            uuid::Uuid::new_v4().as_simple(),
+        );
+        let key_hash = hash_api_key(&raw_key);
+        sqlx::query(
+            "INSERT INTO api_keys (user_id, scope, name, key_hash) VALUES ($1, 'push', 'cli-login', $2)",
+        )
+        .bind(user_id)
+        .bind(&key_hash)
+        .execute(&state.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let redirect_url = format!("{}?api_key={}", callback_url, urlencoding::encode(&raw_key),);
+        return Ok((
+            jar.remove(remove_csrf).remove(remove_cli),
+            Redirect::to(&redirect_url),
+        )
+            .into_response());
+    }
 
     let dest = format!("/{login}");
 
     Ok((
-        jar.add(session_cookie).remove(remove_csrf),
+        jar.add(session_cookie)
+            .remove(remove_csrf)
+            .remove(remove_cli),
         Redirect::to(&dest),
-    ))
+    )
+        .into_response())
 }
 
 async fn upsert_user(state: &AppState, github_user: &GithubUser) -> Result<i64, AppError> {
