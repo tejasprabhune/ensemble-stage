@@ -1765,3 +1765,26 @@ textarea.form-input {
   font-size: var(--text-sm);
   padding: var(--space-4) 0;
 }
+
+/* Viewer sidebar additions */
+
+.actor-kind-badge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  padding: 0 4px;
+  border-radius: 3px;
+  vertical-align: middle;
+  background: var(--color-surface-2);
+  color: var(--color-fg-muted);
+}
+.actor-kind-badge.user  { background: #1a3a2a; color: #6dbf8b; }
+.actor-kind-badge.agent { background: #1a2a3a; color: #6badbf; }
+
+.score-pass    { color: #6dbf8b; font-size: var(--text-sm); padding: 1px 0; }
+.score-fail    { color: #bf6d6d; font-size: var(--text-sm); padding: 1px 0; }
+.score-partial { color: #bfaf6d; font-size: var(--text-sm); padding: 1px 0; }
+
+.hs-actor { font-size: var(--text-xs); color: var(--color-fg-muted); margin-top: var(--space-2); }
+.hs-row   { display: flex; gap: var(--space-2); font-size: var(--text-sm); }
+.hs-key   { color: var(--color-fg-muted); }
+.hs-val   { color: var(--color-fg); }
