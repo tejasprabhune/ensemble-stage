@@ -1,18 +1,4 @@
 (function () {
-  // Theme toggle
-  const root = document.documentElement;
-  const toggle = document.getElementById('themeToggle');
-  const stored = localStorage.getItem('stage-theme');
-  if (stored) root.setAttribute('data-theme', stored);
-
-  if (toggle) {
-    toggle.addEventListener('click', () => {
-      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      root.setAttribute('data-theme', next);
-      localStorage.setItem('stage-theme', next);
-    });
-  }
-
   // Shortcuts overlay
   const overlay  = document.getElementById('shortcuts-overlay');
   const closeBtn = document.getElementById('shortcutsClose');
@@ -28,7 +14,7 @@
   if (closeBtn) closeBtn.addEventListener('click', closeShortcuts);
   if (overlay)  overlay.addEventListener('click', e => { if (e.target === overlay) closeShortcuts(); });
 
-  // Keyboard navigation
+  // Keyboard navigation for the runs table
   let focusedRow = -1;
   const rows = () => Array.from(document.querySelectorAll('.runs-table tbody tr:not(.table-empty)'));
 
@@ -58,7 +44,6 @@
       .map(tr => tr.dataset.runId)
       .filter(Boolean);
     if (checked.length < 2) return;
-    // URL-encode the selected run IDs for the comparison view
     const params = checked.map(id => `run=${id}`).join('&');
     window.location.href = `?compare=1&${params}`;
   }
@@ -101,7 +86,7 @@
   });
 
   // Show/hide compare hint when rows are checked
-  const checkAll = document.getElementById('checkAll');
+  const checkAll    = document.getElementById('checkAll');
   const compareHint = document.getElementById('compareHint');
 
   function updateCompareHint() {
