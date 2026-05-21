@@ -101,8 +101,8 @@ def status(run_id: str) -> None:
     import os
     import requests as _req
 
-    base = os.environ.get("STAGE_BASE_URL", "https://stage.ensemble.sh").rstrip("/")
-    api_key = os.environ.get("STAGE_API_KEY", "")
+    base = os.environ.get("ENSEMBLE_STAGE_BASE_URL", "https://stage.ensemble.sh").rstrip("/")
+    api_key = os.environ.get("ENSEMBLE_STAGE_API_KEY", "")
     resp = _req.get(
         f"{base}/v1/runs/{run_id}",
         headers={"Authorization": f"Bearer {api_key}"},

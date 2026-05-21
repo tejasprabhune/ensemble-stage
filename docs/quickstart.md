@@ -25,8 +25,8 @@ After you click "Create key", Stage shows the raw key value once. Copy it now; i
 The key looks like `stage_sk_` followed by 64 hex characters. Set it in your environment:
 
 ```bash
-export STAGE_API_KEY=stage_sk_...
-export STAGE_BASE_URL=http://localhost:3000
+export ENSEMBLE_STAGE_API_KEY=stage_sk_...
+export ENSEMBLE_STAGE_BASE_URL=http://localhost:3000
 ```
 
 ## Create a project
@@ -42,10 +42,10 @@ INSERT INTO projects (org_id, slug, name, public)
 VALUES (<org_id>, 'my-project', 'My Project', true);
 ```
 
-Replace `your-github-login` with your GitHub username (the personal org slug from sign-in) and choose a slug for the project. The slug appears in the URL and in the `STAGE_PROJECT` environment variable.
+Replace `your-github-login` with your GitHub username (the personal org slug from sign-in) and choose a slug for the project. The slug appears in the URL and in the `ENSEMBLE_STAGE_PROJECT` environment variable.
 
 ```bash
-export STAGE_PROJECT=your-github-login/my-project
+export ENSEMBLE_STAGE_PROJECT=your-github-login/my-project
 ```
 
 ## Push your first run

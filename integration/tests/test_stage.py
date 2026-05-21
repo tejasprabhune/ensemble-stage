@@ -7,14 +7,14 @@ from ensemble_stage.run import RunContext
 
 
 def test_stage_reads_env():
-    with patch.dict("os.environ", {"STAGE_API_KEY": "stage_sk_test", "STAGE_BASE_URL": "http://localhost:9999"}):
+    with patch.dict("os.environ", {"ENSEMBLE_STAGE_API_KEY": "stage_sk_test", "ENSEMBLE_STAGE_BASE_URL": "http://localhost:9999"}):
         s = Stage()
         assert s.api_key == "stage_sk_test"
         assert s.base_url == "http://localhost:9999"
 
 
 def test_stage_constructor_overrides_env():
-    with patch.dict("os.environ", {"STAGE_API_KEY": "stage_sk_env"}):
+    with patch.dict("os.environ", {"ENSEMBLE_STAGE_API_KEY": "stage_sk_env"}):
         s = Stage(api_key="stage_sk_arg", base_url="http://override:1234")
         assert s.api_key == "stage_sk_arg"
         assert s.base_url == "http://override:1234"

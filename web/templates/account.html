@@ -13,10 +13,10 @@
   <section class="account-section">
     <h2>API keys</h2>
     <p>
-      API keys let the ensemble integration push run data to Stage without a browser session.
+      API keys authenticate the ensemble integration without a browser session.
       A key with <code>push</code> scope can create runs, append events, and update run status.
-      A key with <code>admin</code> scope can additionally manage projects and list keys via the API.
-      The raw key value is shown only once at creation time.
+      A key with <code>admin</code> scope additionally manages projects and keys via the API.
+      The raw key value is shown exactly once at creation time; the server stores only a SHA-256 hash.
     </p>
 
     {% include "partials/api_keys_section.html" %}
@@ -24,24 +24,30 @@
     <form
       class="create-key-form"
       hx-post="/me/keys"
-      hx-target="#api-keys-list"
+      hx-target="#api-keys-section"
       hx-swap="outerHTML"
-      hx-on::after-request="this.reset()">
-      <input
-        type="text"
-        name="name"
-        placeholder="Key name (e.g. laptop, CI)"
-        required
-        maxlength="80"
-        autocomplete="off">
-      <select name="scope">
-        <option value="push">push</option>
-        <option value="admin">admin</option>
-      </select>
-      <button type="submit">Create key</button>
+      hx-on::after-request="if(event.detail.successful) this.reset()">
+      <div class="create-key-fields">
+        <input
+          type="text"
+          name="name"
+          placeholder="Key name (e.g. laptop, CI)"
+          required
+          maxlength="80"
+          autocomplete="off">
+        <select name="scope">
+          <option value="push">push</option>
+          <option value="admin">admin</option>
+        </select>
+        <input
+          type="date"
+          name="expires_at"
+          title="Expiration date (leave blank for no expiry)">
+        <button type="submit">Create key</button>
+      </div>
     </form>
     <p class="create-key-hint">
-      Set <code>STAGE_API_KEY</code> in your ensemble project to use the key.
+      Set <code>ENSEMBLE_STAGE_API_KEY</code> in your ensemble project to use the key.
     </p>
   </section>
 

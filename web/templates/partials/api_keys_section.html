@@ -1,34 +1,55 @@
-<div id="api-keys-list">
+<div id="api-keys-section">
 {% if let Some(new_key) = new_key %}
-<div class="new-key-banner">
-  <strong>Save this key now.</strong> It will not be shown again.
-  <div class="new-key-display">
-    <code id="newKeyValue">{{ new_key }}</code>
-    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('newKeyValue').textContent).then(()=>{this.textContent='copied';setTimeout(()=>{this.textContent='copy'},2000)})">copy</button>
+<div class="new-key-banner" id="newKeyBanner">
+  <div class="new-key-banner-text">
+    Your new API key. Save it now; you will not see it again.
   </div>
+  <div class="new-key-display">
+    <code class="mono" id="newKeyValue">{{ new_key }}</code>
+    <button class="btn-copy" onclick="navigator.clipboard.writeText(document.getElementById('newKeyValue').textContent).then(()=>{this.textContent='Copied';setTimeout(()=>{this.textContent='Copy'},2000)})">Copy</button>
+  </div>
+  <button class="new-key-dismiss" onclick="document.getElementById('newKeyBanner').remove()">Dismiss</button>
 </div>
 {% endif %}
+
 {% if keys.is_empty() %}
-<p class="muted">No API keys yet.</p>
+<div class="keys-empty-state muted">
+  No API keys yet. Create one above to push runs from ensemble.
+</div>
 {% else %}
 <table class="keys-table">
   <thead>
-    <tr><th>Name</th><th>Scope</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr>
+    <tr>
+      <th>Name</th>
+      <th>Scope</th>
+      <th>Created</th>
+      <th>Last used</th>
+      <th>Expires</th>
+      <th></th>
+    </tr>
   </thead>
   <tbody>
     {% for key in keys %}
-    <tr>
+    <tr id="key-row-{{ key.id }}">
       <td>{{ key.name }}</td>
       <td><code>{{ key.scope }}</code></td>
       <td class="muted">{{ key.created_at }}</td>
       <td class="muted">{{ key.last_used_at }}</td>
       <td class="muted">{{ key.expires_at }}</td>
-      <td>
-        <button class="btn-revoke"
-          hx-delete="/me/keys/{{ key.id }}"
-          hx-target="#api-keys-list"
-          hx-swap="outerHTML"
-          hx-confirm="Revoke key '{{ key.name }}'?">Revoke</button>
+      <td class="key-actions">
+        <span class="revoke-confirm" id="revoke-confirm-{{ key.id }}" hidden>
+          Revoke <strong>{{ key.name }}</strong>? This cannot be undone.
+          <button
+            class="btn-danger"
+            hx-delete="/me/keys/{{ key.id }}"
+            hx-target="#api-keys-section"
+            hx-swap="outerHTML">Yes, revoke</button>
+          <button class="btn-link" onclick="document.getElementById('revoke-confirm-{{ key.id }}').hidden=true;document.getElementById('revoke-btn-{{ key.id }}').hidden=false">Cancel</button>
+        </span>
+        <button
+          class="btn-revoke"
+          id="revoke-btn-{{ key.id }}"
+          onclick="document.getElementById('revoke-confirm-{{ key.id }}').hidden=false;this.hidden=true">Revoke</button>
       </td>
     </tr>
     {% endfor %}

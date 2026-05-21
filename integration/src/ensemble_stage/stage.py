@@ -14,8 +14,8 @@ class Stage:
 
     Configuration is read from environment variables:
 
-      STAGE_API_KEY   required for push operations
-      STAGE_BASE_URL  defaults to https://stage.ensemble.sh
+      ENSEMBLE_STAGE_API_KEY   required for push operations
+      ENSEMBLE_STAGE_BASE_URL  defaults to https://stage.ensemble.sh
 
     Both can also be passed as constructor arguments, which take priority.
     """
@@ -25,10 +25,10 @@ class Stage:
         api_key: str | None = None,
         base_url: str | None = None,
     ) -> None:
-        self.api_key = api_key or os.environ.get("STAGE_API_KEY", "")
+        self.api_key = api_key or os.environ.get("ENSEMBLE_STAGE_API_KEY", "")
         self.base_url = (
             base_url
-            or os.environ.get("STAGE_BASE_URL", "https://stage.ensemble.sh")
+            or os.environ.get("ENSEMBLE_STAGE_BASE_URL", "https://stage.ensemble.sh")
         ).rstrip("/")
 
         self._session = requests.Session()

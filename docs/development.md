@@ -87,9 +87,9 @@ VALUES (<user_id>, 'push', 'local dev key', '<hash from above>');
 Set the environment variables:
 
 ```bash
-export STAGE_API_KEY=stage_sk_...   # the raw key printed above
-export STAGE_BASE_URL=http://localhost:3000
-export STAGE_PROJECT=demo/smoke-test
+export ENSEMBLE_STAGE_API_KEY=stage_sk_...   # the raw key printed above
+export ENSEMBLE_STAGE_BASE_URL=http://localhost:3000
+export ENSEMBLE_STAGE_PROJECT=demo/smoke-test
 ```
 
 ## Running the automated tests

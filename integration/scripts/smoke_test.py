@@ -6,7 +6,7 @@ Creates one synthetic run with a handful of events, polls until the
 server acknowledges them, then prints the run URL.
 
 Usage:
-  STAGE_API_KEY=<key> STAGE_BASE_URL=http://localhost:3000 \\
+  ENSEMBLE_STAGE_API_KEY=<key> ENSEMBLE_STAGE_BASE_URL=http://localhost:3000 \\
     uv run python integration/scripts/smoke_test.py
 
 Prerequisites:
@@ -15,7 +15,7 @@ Prerequisites:
      or via `POST /v1/projects/<org>/<project>`).
   3. A push-scoped API key from /me.
 
-Set STAGE_PROJECT to override the default project slug.
+Set ENSEMBLE_STAGE_PROJECT to override the default project slug.
 """
 
 import json
@@ -26,12 +26,12 @@ import uuid
 
 import requests
 
-BASE_URL = os.environ.get("STAGE_BASE_URL", "http://localhost:3000").rstrip("/")
-API_KEY  = os.environ.get("STAGE_API_KEY", "")
-PROJECT  = os.environ.get("STAGE_PROJECT", "demo/smoke-test")
+BASE_URL = os.environ.get("ENSEMBLE_STAGE_BASE_URL", "http://localhost:3000").rstrip("/")
+API_KEY  = os.environ.get("ENSEMBLE_STAGE_API_KEY", "")
+PROJECT  = os.environ.get("ENSEMBLE_STAGE_PROJECT", "demo/smoke-test")
 
 if not API_KEY:
-    print("error: set STAGE_API_KEY", file=sys.stderr)
+    print("error: set ENSEMBLE_STAGE_API_KEY", file=sys.stderr)
     sys.exit(1)
 
 SESSION = requests.Session()
@@ -56,7 +56,7 @@ def get(path):
 
 def main():
     if "/" not in PROJECT:
-        print(f"error: STAGE_PROJECT must be 'org_slug/project_slug', got {PROJECT!r}", file=sys.stderr)
+        print(f"error: ENSEMBLE_STAGE_PROJECT must be 'org_slug/project_slug', got {PROJECT!r}", file=sys.stderr)
         sys.exit(1)
 
     org, proj = PROJECT.split("/", 1)

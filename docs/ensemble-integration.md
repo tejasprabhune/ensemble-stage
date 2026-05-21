@@ -22,8 +22,8 @@ The client reads two environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `STAGE_API_KEY` | (required) | A push-scoped API key from `/me`. |
-| `STAGE_BASE_URL` | `https://stage.ensemble.sh` | The Stage server URL. |
+| `ENSEMBLE_STAGE_API_KEY` | (required) | A push-scoped API key from `/me`. |
+| `ENSEMBLE_STAGE_BASE_URL` | `https://stage.ensemble.sh` | The Stage server URL. |
 
 You can also pass them as constructor arguments, which take priority over the environment:
 
@@ -40,7 +40,7 @@ project  = "myorg/popcornbench"
 enabled  = true
 ```
 
-The `api_key` field in `stage.toml` is supported but storing credentials in files is not recommended. `STAGE_API_KEY` in the environment is the right place.
+The `api_key` field in `stage.toml` is supported but storing credentials in files is not recommended. `ENSEMBLE_STAGE_API_KEY` in the environment is the right place.
 
 ## Pushing a run
 
@@ -280,11 +280,11 @@ with ctx as run:
     ...
 ```
 
-If `STAGE_API_KEY` is not set, `stage.api_key` is an empty string and the first request will get a 401. Treat a missing key the same as an unavailable server: log a warning and proceed.
+If `ENSEMBLE_STAGE_API_KEY` is not set, `stage.api_key` is an empty string and the first request will get a 401. Treat a missing key the same as an unavailable server: log a warning and proceed.
 
 ## Where the ensemble hook goes
 
-The hook belongs in the `Runner` class in `ensemble/runner.py`, which orchestrates a single scenario execution. The hook is additive: if `STAGE_API_KEY` is not set, import of `ensemble_stage` is skipped and ensemble behaves exactly as before.
+The hook belongs in the `Runner` class in `ensemble/runner.py`, which orchestrates a single scenario execution. The hook is additive: if `ENSEMBLE_STAGE_API_KEY` is not set, import of `ensemble_stage` is skipped and ensemble behaves exactly as before.
 
 The ensemble event stream maps to Stage event kinds as follows:
 
