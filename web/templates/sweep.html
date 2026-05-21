@@ -229,8 +229,8 @@ sweeps
 
   async function load() {
     const [swR, runsR] = await Promise.all([
-      fetch(`/v1/sweeps/${sweepId}`),
-      fetch(`/v1/sweeps/${sweepId}/runs`),
+      fetch(`/v1/sweeps/${sweepId}`, { keepalive: true }),
+      fetch(`/v1/sweeps/${sweepId}/runs`, { keepalive: true }),
     ]);
     if (!runsR.ok) {
       document.getElementById('sweepMatrix').textContent = 'Could not load runs.';

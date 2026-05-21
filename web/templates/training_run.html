@@ -344,7 +344,7 @@ serve_url    = "http://your-vllm-host:8000/v1"</code></pre>
   }
 
   async function loadMetrics() {
-    const r = await fetch(`/v1/training_runs/${trainingRunId}/metrics`);
+    const r = await fetch(`/v1/training_runs/${trainingRunId}/metrics`, { keepalive: true });
     if (!r.ok) return;
     const { metrics } = await r.json();
     allMetrics = metrics;
