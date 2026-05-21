@@ -1,6 +1,6 @@
 {% extends "base-app.html" %}
 
-{% block title %}Run {{ run_id }} - Stage{% endblock %}
+{% block title %}{{ scenario }} - {{ run_id_short }} - Stage{% endblock %}
 
 {% block topnav %}
 <a href="/{{ org_slug }}">{{ org_slug }}</a>
@@ -9,7 +9,7 @@
 <span class="sep">/</span>
 runs
 <span class="sep">/</span>
-<span class="mono">{{ run_id }}</span>
+<span class="mono">{{ run_id_short }}</span>
 {% endblock %}
 
 {% block rail_project %}
@@ -32,22 +32,25 @@ runs
     <button class="run-copy-btn" onclick="navigator.clipboard.writeText('{{ run_id }}')">copy</button>
     <span class="run-header-sep">|</span>
     <span class="run-header-label">Status</span>
-    <span id="metaStatus"><span class="run-header-value muted">loading</span></span>
+    <span id="metaStatus">
+      <span class="status-dot status-dot-{{ status }}"></span>
+      <span class="run-header-value" id="metaStatusText">{{ status }}</span>
+    </span>
     <span class="run-header-sep">|</span>
     <span class="run-header-label">Scenario</span>
-    <span class="run-header-value muted" id="metaScenario">—</span>
+    <span class="run-header-value" id="metaScenario">{{ scenario }}</span>
     <span class="run-header-sep">|</span>
     <span class="run-header-label">Model</span>
-    <span class="run-header-value muted" id="metaBackend">—</span>
+    <span class="run-header-value" id="metaBackend">{{ backend }}</span>
     <span class="run-header-sep">|</span>
     <span class="run-header-label">World</span>
-    <span class="run-header-value muted" id="metaWorld">—</span>
+    <span class="run-header-value" id="metaWorld">{{ world }}</span>
     <span class="run-header-sep">|</span>
     <span class="run-header-label">Started</span>
-    <span class="run-header-value muted" id="metaStarted">—</span>
+    <span class="run-header-value {% if started_at == "—" %}muted{% endif %}" id="metaStarted">{{ started_at }}</span>
     <span class="run-header-sep">|</span>
     <span class="run-header-label">Duration</span>
-    <span class="run-header-value muted" id="metaDuration">—</span>
+    <span class="run-header-value {% if duration == "—" %}muted{% endif %}" id="metaDuration">{{ duration }}</span>
   </div>
 
   <div class="run-main-area">
@@ -83,7 +86,7 @@ runs
         <div class="sidebar-section-body">
           <dl class="meta-list" id="costBreakdown">
             <dt>Total</dt>
-            <dd class="mono muted" id="metaCostTotal">—</dd>
+            <dd class="mono {% if cost == "—" %}muted{% endif %}" id="metaCostTotal">{{ cost }}</dd>
           </dl>
         </div>
       </div>
@@ -100,7 +103,7 @@ runs
       <div class="sidebar-section">
         <div class="sidebar-section-header">Outcome</div>
         <div class="sidebar-section-body">
-          <pre class="outcome-pre" id="metaOutcome">—</pre>
+          <pre class="outcome-pre {% if outcome_json == "null" %}muted{% endif %}" id="metaOutcome">{{ outcome_display|safe }}</pre>
         </div>
       </div>
 
@@ -121,7 +124,7 @@ runs
       <div class="sidebar-section">
         <div class="sidebar-section-header">Metadata</div>
         <div class="sidebar-section-body">
-          <pre class="outcome-pre" id="metaMetadata">—</pre>
+          <pre class="outcome-pre {% if metadata_json == "null" %}muted{% endif %}" id="metaMetadata">{{ metadata_display|safe }}</pre>
         </div>
       </div>
     </aside>
@@ -131,56 +134,71 @@ runs
 <script>
   (function () {
     const runId = {{ run_id|json }};
+    let currentStatus = {{ status|json }};
 
-    async function loadMeta() {
-      try {
-        const res = await fetch(`/v1/runs/${runId}`);
-        if (!res.ok) return;
-        const run = await res.json();
+    function updateStatus(run) {
+      if (run.status === currentStatus) return;
+      currentStatus = run.status;
 
-        const statusEl = document.getElementById('metaStatus');
-        if (statusEl && run.status) {
-          const dot = `<span class="status-dot status-dot-${run.status}"></span>`;
-          statusEl.innerHTML = `${dot}<span class="run-header-value">${run.status}</span>`;
-        }
-        setText('metaScenario', run.scenario);
-        setText('metaWorld', run.world);
-        setText('metaBackend', run.backend);
-        setText('metaStarted', run.started_at ? new Date(run.started_at).toLocaleString() : null);
-        if (run.wall_time_ms != null) setText('metaDuration', formatMs(run.wall_time_ms));
-        if (run.total_cost) setText('metaCostTotal', formatCost(run.total_cost));
-        if (run.outcome) {
-          const el = document.getElementById('metaOutcome');
-          if (el) { el.textContent = JSON.stringify(run.outcome, null, 2); el.classList.remove('muted'); }
-        }
-        if (run.metadata && Object.keys(run.metadata).length > 0) {
-          const el = document.getElementById('metaMetadata');
-          if (el) { el.textContent = JSON.stringify(run.metadata, null, 2); el.classList.remove('muted'); }
-        }
-      } catch (_) {}
-    }
+      const dot = document.querySelector('#metaStatus .status-dot');
+      const text = document.getElementById('metaStatusText');
+      if (dot) {
+        dot.className = 'status-dot status-dot-' + run.status;
+      }
+      if (text) text.textContent = run.status;
 
-    function setText(id, val) {
-      if (val == null) return;
-      const el = document.getElementById(id);
-      if (el) { el.textContent = val; el.classList.remove('muted'); }
+      if (run.wall_time_ms != null) {
+        const el = document.getElementById('metaDuration');
+        if (el) { el.textContent = formatMs(run.wall_time_ms); el.classList.remove('muted'); }
+      }
+      if (run.total_cost) {
+        const el = document.getElementById('metaCostTotal');
+        if (el) { el.textContent = formatCost(run.total_cost); el.classList.remove('muted'); }
+      }
+      if (run.outcome) {
+        const el = document.getElementById('metaOutcome');
+        if (el) { el.textContent = JSON.stringify(run.outcome, null, 2); el.classList.remove('muted'); }
+      }
+      if (run.started_at) {
+        const el = document.getElementById('metaStarted');
+        if (el) { el.textContent = new Date(run.started_at).toLocaleString(); el.classList.remove('muted'); }
+      }
     }
 
     function formatMs(ms) {
-      if (ms < 1000) return `${ms}ms`;
-      if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+      if (ms < 1000) return ms + 'ms';
+      if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
       const m = Math.floor(ms / 60000);
       const s = Math.round((ms % 60000) / 1000);
-      return `${m}m ${s}s`;
+      return m + 'm ' + s + 's';
     }
 
     function formatCost(cost) {
-      if (cost.usd != null) return `$${cost.usd.toFixed(4)}`;
+      if (cost.usd != null) return '$' + cost.usd.toFixed(4);
       return JSON.stringify(cost);
     }
 
-    loadMeta();
-    setInterval(loadMeta, 5000);
+    let pollTimer = null;
+
+    function poll() {
+      if (!['queued', 'running'].includes(currentStatus)) return;
+      fetch('/v1/runs/' + runId)
+        .then(r => r.ok ? r.json() : null)
+        .then(run => {
+          if (!run) return;
+          updateStatus(run);
+          if (['queued', 'running'].includes(run.status)) {
+            pollTimer = setTimeout(poll, 2000);
+          }
+        })
+        .catch(() => {
+          pollTimer = setTimeout(poll, 5000);
+        });
+    }
+
+    if (['queued', 'running'].includes(currentStatus)) {
+      pollTimer = setTimeout(poll, 2000);
+    }
   })();
 
   window.STAGE_RUN_ID = {{ run_id|json }};

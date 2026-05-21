@@ -86,27 +86,53 @@ struct RunsRowsPartial {
 #[template(path = "run_detail.html")]
 struct RunDetailTemplate {
     run_id: String,
+    run_id_short: String,
     org_slug: String,
     project_slug: String,
     user: UserCtx,
+    scenario: String,
+    world: String,
+    backend: String,
+    status: String,
+    started_at: String,
+    duration: String,
+    cost: String,
+    outcome_display: String,
+    outcome_json: String,
+    metadata_display: String,
+    metadata_json: String,
 }
 
 #[derive(Template)]
 #[template(path = "sweep.html")]
 struct SweepTemplate {
     sweep_id: String,
+    sweep_id_short: String,
     org_slug: String,
     project_slug: String,
     user: UserCtx,
+    status: String,
+    created_at: String,
+    started_at: String,
+    ended_at: String,
+    config_summary: String,
 }
 
 #[derive(Template)]
 #[template(path = "training_run.html")]
 struct TrainingRunTemplate {
     training_run_id: String,
+    training_run_id_short: String,
     org_slug: String,
     project_slug: String,
     user: UserCtx,
+    status: String,
+    persona_name: String,
+    base_model: String,
+    created_at: String,
+    started_at: String,
+    ended_at: String,
+    artifact_uri: String,
 }
 
 #[derive(Template)]
@@ -180,6 +206,20 @@ fn format_outcome(outcome: Option<&Value>) -> String {
     } else {
         "—".into()
     }
+}
+
+fn summarize_sweep_config(config: &Value) -> String {
+    let mut parts = Vec::new();
+    if let Some(scenarios) = config.get("scenarios").and_then(|v| v.as_array()) {
+        parts.push(format!("{} scenario{}", scenarios.len(), if scenarios.len() == 1 { "" } else { "s" }));
+    }
+    if let Some(backends) = config.get("backends").and_then(|v| v.as_array()) {
+        parts.push(format!("{} backend{}", backends.len(), if backends.len() == 1 { "" } else { "s" }));
+    }
+    if let Some(n) = config.get("n_trials").and_then(|v| v.as_i64()) {
+        parts.push(format!("{n} trial{}", if n == 1 { "" } else { "s" }));
+    }
+    parts.join(", ")
 }
 
 fn format_ts(ts: Option<DateTime<Utc>>) -> String {
@@ -412,38 +452,128 @@ async fn runs_partial(
 }
 
 async fn run_detail(
+    State(state): State<AppState>,
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, run_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
+    let run_uuid: Uuid = run_id
+        .parse()
+        .map_err(|_| AppError::NotFound)?;
+
+    type RunRow = (
+        String, String, String, String,
+        Option<DateTime<Utc>>, Option<i64>, Option<Value>, Option<Value>, Option<Value>,
+    );
+    let row = sqlx::query_as::<_, RunRow>(
+        r#"
+        SELECT r.scenario, r.world, r.backend, r.status::text,
+               r.started_at, r.wall_time_ms, r.total_cost, r.outcome, r.metadata
+        FROM runs r
+        WHERE r.id = $1
+        "#,
+    )
+    .bind(run_uuid)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or(AppError::NotFound)?;
+
+    let outcome_json = serde_json::to_string(&row.7).unwrap_or_else(|_| "null".into());
+    let outcome_display = row.7.as_ref()
+        .map(|v| serde_json::to_string_pretty(v).unwrap_or_else(|_| "—".into()))
+        .unwrap_or_else(|| "—".into());
+    let metadata_json = serde_json::to_string(&row.8).unwrap_or_else(|_| "null".into());
+    let metadata_display = row.8.as_ref()
+        .map(|v| serde_json::to_string_pretty(v).unwrap_or_else(|_| "—".into()))
+        .unwrap_or_else(|| "—".into());
+
     render(RunDetailTemplate {
+        run_id_short: run_id[..8.min(run_id.len())].to_string(),
         run_id,
         org_slug,
         project_slug,
         user: UserCtx::from(&maybe_user),
+        scenario: row.0,
+        world: row.1,
+        backend: row.2,
+        status: row.3,
+        started_at: format_ts(row.4),
+        duration: format_duration(row.5),
+        cost: format_cost(row.6.as_ref()),
+        outcome_display,
+        outcome_json,
+        metadata_display,
+        metadata_json,
     })
 }
 
 async fn sweep(
+    State(state): State<AppState>,
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, sweep_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
+    let sweep_uuid: Uuid = sweep_id
+        .parse()
+        .map_err(|_| AppError::NotFound)?;
+
+    type SweepRow = (String, Option<DateTime<Utc>>, Option<DateTime<Utc>>, DateTime<Utc>, Value);
+    let row = sqlx::query_as::<_, SweepRow>(
+        "SELECT status::text, started_at, ended_at, created_at, config FROM sweeps WHERE id = $1",
+    )
+    .bind(sweep_uuid)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or(AppError::NotFound)?;
+
+    let config_summary = summarize_sweep_config(&row.4);
+
     render(SweepTemplate {
+        sweep_id_short: sweep_id[..8.min(sweep_id.len())].to_string(),
         sweep_id,
         org_slug,
         project_slug,
         user: UserCtx::from(&maybe_user),
+        status: row.0,
+        started_at: format_ts(row.1),
+        ended_at: format_ts(row.2),
+        created_at: row.3.format("%b %d %Y %H:%M").to_string(),
+        config_summary,
     })
 }
 
 async fn training_run(
+    State(state): State<AppState>,
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, training_run_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
+    let tr_uuid: Uuid = training_run_id
+        .parse()
+        .map_err(|_| AppError::NotFound)?;
+
+    type TrRow = (String, String, String, Option<DateTime<Utc>>, Option<DateTime<Utc>>, DateTime<Utc>, Option<String>);
+    let row = sqlx::query_as::<_, TrRow>(
+        "SELECT status::text, persona_name, base_model, started_at, ended_at, created_at, artifact_uri FROM training_runs WHERE id = $1",
+    )
+    .bind(tr_uuid)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or(AppError::NotFound)?;
+
     render(TrainingRunTemplate {
+        training_run_id_short: training_run_id[..8.min(training_run_id.len())].to_string(),
         training_run_id,
         org_slug,
         project_slug,
         user: UserCtx::from(&maybe_user),
+        status: row.0,
+        persona_name: row.1,
+        base_model: row.2,
+        started_at: format_ts(row.3),
+        ended_at: format_ts(row.4),
+        created_at: row.5.format("%b %d %Y %H:%M").to_string(),
+        artifact_uri: row.6.unwrap_or_default(),
     })
 }
 

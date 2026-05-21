@@ -1,6 +1,6 @@
 {% extends "base-app.html" %}
 
-{% block title %}Sweep {{ sweep_id }} - Stage{% endblock %}
+{% block title %}Sweep {{ sweep_id_short }} - Stage{% endblock %}
 
 {% block topnav %}
 <a href="/{{ org_slug }}">{{ org_slug }}</a>
@@ -9,7 +9,7 @@
 <span class="sep">/</span>
 sweeps
 <span class="sep">/</span>
-<span class="mono">{{ sweep_id }}</span>
+<span class="mono">{{ sweep_id_short }}</span>
 {% endblock %}
 
 {% block rail_project %}
@@ -25,9 +25,34 @@ sweeps
 {% endblock %}
 
 {% block content %}
-<main class="stub-page">
-  <h1>Sweep</h1>
-  <p class="mono muted">{{ sweep_id }}</p>
-  <span class="stub-notice">Coming soon</span>
-</main>
+<div class="stub-layout">
+
+  <div class="entity-header">
+    <div class="entity-header-row">
+      <span class="entity-header-id mono">{{ sweep_id }}</span>
+      <span class="status-badge status-{{ status }}">{{ status }}</span>
+    </div>
+    <div class="entity-header-meta">
+      <span class="meta-pair"><span class="meta-label">Created</span> <span class="meta-value">{{ created_at }}</span></span>
+      {% if started_at != "—" %}
+      <span class="meta-pair"><span class="meta-label">Started</span> <span class="meta-value">{{ started_at }}</span></span>
+      {% endif %}
+      {% if ended_at != "—" %}
+      <span class="meta-pair"><span class="meta-label">Ended</span> <span class="meta-value">{{ ended_at }}</span></span>
+      {% endif %}
+    </div>
+    {% if config_summary != "" %}
+    <div class="entity-header-config">
+      <span class="meta-label">Config</span>
+      <code class="config-summary">{{ config_summary }}</code>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stub-body">
+    <p class="stub-notice">The sweep dashboard ships in the next session.</p>
+    <p class="muted" style="font-size:var(--text-sm)">It will show aggregated scores across all runs in this sweep, per-scenario breakdowns, and a comparison of backends.</p>
+  </div>
+
+</div>
 {% endblock %}

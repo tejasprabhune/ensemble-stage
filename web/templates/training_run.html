@@ -1,6 +1,6 @@
 {% extends "base-app.html" %}
 
-{% block title %}Training run {{ training_run_id }} - Stage{% endblock %}
+{% block title %}Training run {{ training_run_id_short }} - Stage{% endblock %}
 
 {% block topnav %}
 <a href="/{{ org_slug }}">{{ org_slug }}</a>
@@ -9,7 +9,7 @@
 <span class="sep">/</span>
 training
 <span class="sep">/</span>
-<span class="mono">{{ training_run_id }}</span>
+<span class="mono">{{ training_run_id_short }}</span>
 {% endblock %}
 
 {% block rail_project %}
@@ -25,9 +25,36 @@ training
 {% endblock %}
 
 {% block content %}
-<main class="stub-page">
-  <h1>Training run</h1>
-  <p class="mono muted">{{ training_run_id }}</p>
-  <span class="stub-notice">Coming soon</span>
-</main>
+<div class="stub-layout">
+
+  <div class="entity-header">
+    <div class="entity-header-row">
+      <span class="entity-header-id mono">{{ training_run_id }}</span>
+      <span class="status-badge status-{{ status }}">{{ status }}</span>
+    </div>
+    <div class="entity-header-meta">
+      <span class="meta-pair"><span class="meta-label">Persona</span> <span class="meta-value">{{ persona_name }}</span></span>
+      <span class="meta-pair"><span class="meta-label">Base model</span> <span class="meta-value">{{ base_model }}</span></span>
+      <span class="meta-pair"><span class="meta-label">Created</span> <span class="meta-value">{{ created_at }}</span></span>
+      {% if started_at != "—" %}
+      <span class="meta-pair"><span class="meta-label">Started</span> <span class="meta-value">{{ started_at }}</span></span>
+      {% endif %}
+      {% if ended_at != "—" %}
+      <span class="meta-pair"><span class="meta-label">Ended</span> <span class="meta-value">{{ ended_at }}</span></span>
+      {% endif %}
+    </div>
+    {% if artifact_uri != "" %}
+    <div class="entity-header-config">
+      <span class="meta-label">Artifact</span>
+      <code class="config-summary">{{ artifact_uri }}</code>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stub-body">
+    <p class="stub-notice">The training run detail view ships in the next session.</p>
+    <p class="muted" style="font-size:var(--text-sm)">It will show loss curves, evaluation metrics over training steps, and the final artifact location.</p>
+  </div>
+
+</div>
 {% endblock %}
