@@ -1844,9 +1844,13 @@ textarea.form-input {
 
 .settings-meta { margin-top: var(--space-2); }
 
-.kv-table { border-collapse: collapse; }
-.kv-table tr + tr td, .kv-table tr + tr th { padding-top: var(--space-1); }
-.kv-key { padding-right: var(--space-3); vertical-align: top; white-space: nowrap; font-size: var(--text-sm); }
+.kv-table {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  align-items: baseline;
+}
+.kv-key { white-space: nowrap; font-size: var(--text-sm); color: var(--color-fg-muted); }
 .kv-val { font-size: var(--text-sm); }
 
 .btn-danger-outline {
