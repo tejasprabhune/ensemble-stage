@@ -18,9 +18,14 @@ fn github_auth_url(state: &AppState, csrf: &str) -> String {
     )
 }
 
-pub async fn login(State(state): State<AppState>) -> impl IntoResponse {
+pub async fn login(State(state): State<AppState>, jar: CookieJar) -> impl IntoResponse {
     let csrf = uuid::Uuid::new_v4().to_string();
-    Redirect::to(&github_auth_url(&state, &csrf))
+    let mut csrf_cookie = Cookie::new("stage_csrf", csrf.clone());
+    csrf_cookie.set_http_only(true);
+    csrf_cookie.set_same_site(SameSite::Lax);
+    csrf_cookie.set_path("/auth/github/callback");
+    csrf_cookie.set_max_age(time::Duration::minutes(10));
+    (jar.add(csrf_cookie), Redirect::to(&github_auth_url(&state, &csrf)))
 }
 
 #[derive(Deserialize)]
@@ -46,6 +51,12 @@ pub async fn callback(
     Query(query): Query<CallbackQuery>,
     jar: CookieJar,
 ) -> Result<impl IntoResponse, AppError> {
+    let csrf_cookie = jar.get("stage_csrf").map(|c| c.value().to_string());
+    let csrf_state = query.state.as_deref().unwrap_or("");
+    if csrf_cookie.as_deref() != Some(csrf_state) || csrf_state.is_empty() {
+        return Err(AppError::BadRequest("invalid csrf state".into()));
+    }
+
     let http = reqwest::Client::new();
 
     let token_res: GithubTokenResponse = http
@@ -90,18 +101,18 @@ pub async fn callback(
     )
     .map_err(|e| AppError::Internal(anyhow::anyhow!("jwt encode: {e}")))?;
 
-    let mut cookie = Cookie::new("stage_session", token);
-    cookie.set_http_only(true);
-    cookie.set_same_site(SameSite::Lax);
-    cookie.set_path("/");
-    cookie.set_max_age(time::Duration::days(30));
+    let mut session_cookie = Cookie::new("stage_session", token);
+    session_cookie.set_http_only(true);
+    session_cookie.set_same_site(SameSite::Lax);
+    session_cookie.set_path("/");
+    session_cookie.set_max_age(time::Duration::days(30));
 
-    Ok((jar.add(cookie), Redirect::to("/")))
+    let remove_csrf = Cookie::build(("stage_csrf", "")).path("/auth/github/callback").build();
+
+    Ok((jar.add(session_cookie).remove(remove_csrf), Redirect::to("/")))
 }
 
 async fn upsert_user(state: &AppState, github_user: &GithubUser) -> Result<i64, AppError> {
-    // Create the personal org first so the FK on users.default_org_id is
-    // satisfied when we insert the user row.
     let org_id: i64 = sqlx::query_scalar(
         r#"
         INSERT INTO orgs (slug, name)
@@ -120,8 +131,8 @@ async fn upsert_user(state: &AppState, github_user: &GithubUser) -> Result<i64, 
         INSERT INTO users (github_id, github_login, email, default_org_id)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (github_id) DO UPDATE
-          SET github_login  = EXCLUDED.github_login,
-              email         = COALESCE(EXCLUDED.email, users.email),
+          SET github_login   = EXCLUDED.github_login,
+              email          = COALESCE(EXCLUDED.email, users.email),
               default_org_id = EXCLUDED.default_org_id
         RETURNING id
         "#,

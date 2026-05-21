@@ -6,6 +6,7 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 
 use crate::{AppError, AppState};
 
@@ -130,6 +131,25 @@ where
             user_id: row.0,
             scope,
         })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MaybeApiKey(pub Option<ApiKeyAuth>);
+
+#[async_trait]
+impl<S> FromRequestParts<S> for MaybeApiKey
+where
+    S: Send + Sync,
+    AppState: axum::extract::FromRef<S>,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        match ApiKeyAuth::from_request_parts(parts, state).await {
+            Ok(auth) => Ok(MaybeApiKey(Some(auth))),
+            Err(_) => Ok(MaybeApiKey(None)),
+        }
     }
 }
 
