@@ -34,8 +34,9 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'calling-code', monospace;
+  --font-sans:    'Inter', system-ui, sans-serif;
+  --font-display: 'freight-text-pro', Georgia, serif;
+  --font-mono:    'calling-code', monospace;
 
   --text-xs:   12px;
   --text-sm:   13px;

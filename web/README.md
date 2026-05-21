@@ -78,6 +78,7 @@ Body type is Inter (self-hosted variable font, Latin subset). Calling Code is ke
 | Token | Value | Use |
 |---|---|---|
 | `--font-sans` | Inter, system-ui | All body and heading text |
+| `--font-display` | freight-text-pro, Georgia | Wordmark only |
 | `--font-mono` | calling-code | Code, run IDs, numeric columns, tabular data |
 | `--text-xs` | 12px | Labels, uppercase section headers |
 | `--text-sm` | 13px | Table content, metadata, code |
