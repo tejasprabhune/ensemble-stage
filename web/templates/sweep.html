@@ -358,6 +358,11 @@ sweeps
       return;
     }
 
+    const allFailed = runs.length > 0 && runs.every(r => r.status === 'failed');
+    if (allFailed) {
+      wrap.innerHTML += '<p class="muted" style="padding:var(--space-2) 0;font-size:var(--text-xs)">This sweep had no successful runs. Check the matrix below for failure patterns.</p>';
+    }
+
     if (!rVals.length || !cVals.length) {
       rVals.push('(all)'); cVals.push('(all)');
     }
