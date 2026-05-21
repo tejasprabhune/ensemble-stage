@@ -14,44 +14,54 @@
 <div class="project-layout">
 
   <div class="filter-bar" id="filterBar">
+    <label class="filter-label" for="filterInput">/</label>
     <input
       class="filter-input"
       id="filterInput"
+      name="filter"
       type="search"
-      placeholder="Filter runs…"
+      placeholder="Filter by scenario, world, backend, status…"
       aria-label="Filter runs"
+      autocomplete="off"
       hx-get="/v1/projects/{{ org_slug }}/{{ project_slug }}/runs"
-      hx-trigger="input changed delay:300ms"
+      hx-trigger="input changed delay:300ms, search"
       hx-target="#runs-table-body"
+      hx-swap="innerHTML"
       hx-include="[name='sort']"
+      hx-push-url="true"
     >
     <select name="sort" class="sort-select"
       hx-get="/v1/projects/{{ org_slug }}/{{ project_slug }}/runs"
       hx-trigger="change"
       hx-target="#runs-table-body"
-      hx-include="#filterInput">
+      hx-swap="innerHTML"
+      hx-include="#filterInput"
+      hx-push-url="true">
       <option value="created_at:desc">Newest first</option>
       <option value="created_at:asc">Oldest first</option>
-      <option value="wall_time_ms:asc">Fastest first</option>
-      <option value="wall_time_ms:desc">Slowest first</option>
+      <option value="wall_time_ms:asc">Fastest</option>
+      <option value="wall_time_ms:desc">Slowest</option>
     </select>
     <span class="compare-hint" id="compareHint" hidden>
-      <kbd>c</kbd> to compare selected
+      <kbd>c</kbd> compare
+    </span>
+    <span class="filter-bar-right">
+      <span class="run-count" id="runCount"></span>
     </span>
   </div>
 
   <div class="runs-table-wrap">
-    <table class="runs-table" id="runsTable">
+    <table class="runs-table" id="runsTable" role="grid">
       <thead>
         <tr>
-          <th class="col-check"><input type="checkbox" id="checkAll" title="Select all"></th>
+          <th class="col-check"><input type="checkbox" id="checkAll" title="Select all visible runs" aria-label="Select all"></th>
           <th class="col-scenario">Scenario</th>
           <th class="col-world">World</th>
           <th class="col-backend">Backend</th>
           <th class="col-status">Status</th>
           <th class="col-started">Started</th>
           <th class="col-duration">Duration</th>
-          <th class="col-nav"><kbd>j</kbd></th>
+          <th class="col-nav" aria-label="Keyboard hint"><kbd>j</kbd></th>
         </tr>
       </thead>
       <tbody id="runs-table-body">
