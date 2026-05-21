@@ -1,35 +1,47 @@
-{% extends "base.html" %}
+{% extends "base-app.html" %}
 
 {% block title %}{{ org_slug }}/{{ project_slug }} - Stage{% endblock %}
 
 {% block topnav %}
-<span class="breadcrumb">
-  <a href="/{{ org_slug }}">{{ org_slug }}</a>
-  <span class="sep">/</span>
-  <strong>{{ project_slug }}</strong>
-</span>
+<a href="/{{ org_slug }}">{{ org_slug }}</a>
+<span class="sep">/</span>
+<span>{{ project_slug }}</span>
+{% endblock %}
+
+{% block topbar_center %}
+<input
+  class="topbar-filter"
+  id="filterInput"
+  name="filter"
+  type="search"
+  placeholder="Filter runs…"
+  aria-label="Filter runs"
+  autocomplete="off"
+  hx-get="/v1/projects/{{ org_slug }}/{{ project_slug }}/runs"
+  hx-trigger="input changed delay:300ms, search"
+  hx-target="#runs-table-body"
+  hx-swap="innerHTML"
+  hx-include="[name='sort']"
+  hx-push-url="true"
+>
+{% endblock %}
+
+{% block rail_project %}
+<a class="rail-project active" href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+{% endblock %}
+
+{% block rail_nav %}
+<li class="rail-nav-item active"><a href="/{{ org_slug }}/{{ project_slug }}">Runs</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/sweeps">Sweeps</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/training">Training</a></li>
+<li class="rail-nav-item"><a href="#">Comparisons</a></li>
+<li class="rail-nav-item"><a href="#">Settings</a></li>
 {% endblock %}
 
 {% block content %}
 <div class="project-layout">
 
   <div class="filter-bar" id="filterBar">
-    <label class="filter-label" for="filterInput">/</label>
-    <input
-      class="filter-input"
-      id="filterInput"
-      name="filter"
-      type="search"
-      placeholder="Filter by scenario, world, backend, status…"
-      aria-label="Filter runs"
-      autocomplete="off"
-      hx-get="/v1/projects/{{ org_slug }}/{{ project_slug }}/runs"
-      hx-trigger="input changed delay:300ms, search"
-      hx-target="#runs-table-body"
-      hx-swap="innerHTML"
-      hx-include="[name='sort']"
-      hx-push-url="true"
-    >
     <select name="sort" class="sort-select"
       hx-get="/v1/projects/{{ org_slug }}/{{ project_slug }}/runs"
       hx-trigger="change"
@@ -46,7 +58,7 @@
       <kbd>c</kbd> compare
     </span>
     <span class="filter-bar-right">
-      <span class="run-count" id="runCount"></span>
+      <span id="runCount"></span>
     </span>
   </div>
 
@@ -54,19 +66,22 @@
     <table class="runs-table" id="runsTable" role="grid">
       <thead>
         <tr>
-          <th class="col-check"><input type="checkbox" id="checkAll" title="Select all visible runs" aria-label="Select all"></th>
-          <th class="col-scenario">Scenario</th>
-          <th class="col-world">World</th>
-          <th class="col-backend">Backend</th>
-          <th class="col-status">Status</th>
-          <th class="col-started">Started</th>
+          <th class="col-check"><input type="checkbox" id="checkAll" title="Select all" aria-label="Select all"></th>
+          <th class="col-id">ID</th>
+          <th>Started</th>
+          <th>Scenario</th>
+          <th>World</th>
+          <th>Model</th>
+          <th>Status</th>
+          <th>Outcome</th>
+          <th class="col-cost">Cost</th>
           <th class="col-duration">Duration</th>
           <th class="col-nav" aria-label="Keyboard hint"><kbd>j</kbd></th>
         </tr>
       </thead>
       <tbody id="runs-table-body">
         <tr class="table-empty">
-          <td colspan="8">No runs yet. Push your first run with the ensemble-stage client.</td>
+          <td colspan="11">No runs yet. Push your first run with the ensemble-stage client.</td>
         </tr>
       </tbody>
     </table>

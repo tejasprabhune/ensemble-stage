@@ -1,6 +1,10 @@
-{% extends "base.html" %}
+{% extends "base-app.html" %}
 
 {% block title %}Account - Stage{% endblock %}
+
+{% block topnav %}
+<span>Account</span>
+{% endblock %}
 
 {% block content %}
 <main class="account-page">
@@ -41,7 +45,7 @@
       </select>
       <button type="submit">Create key</button>
     </form>
-    <p class="create-key-hint muted">
+    <p class="create-key-hint">
       Set <code>STAGE_API_KEY</code> in your ensemble project to use the key.
     </p>
   </section>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Stage{% endblock %}</title>
+  <link rel="stylesheet" href="/static/styles/tokens.css">
+  <link rel="stylesheet" href="/static/styles/base.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+</head>
+<body>
+
+<header class="topbar-app">
+  <a class="wordmark" href="/">Stage</a>
+  <div class="topbar-breadcrumb">
+    {% block topnav %}{% endblock %}
+  </div>
+  <div class="topbar-center">
+    {% block topbar_center %}{% endblock %}
+  </div>
+  <div class="topbar-right">
+    {% if let Some(login) = user.github_login %}
+      <a class="topbar-user-link" href="/me">
+        <span class="avatar-text">{{ login }}</span>
+        <span class="topbar-chevron">&#8964;</span>
+      </a>
+    {% else %}
+      <a class="btn btn-sm" href="/auth/github/login">Sign in</a>
+    {% endif %}
+  </div>
+</header>
+
+<div class="app-layout">
+  <nav class="rail">
+    <div class="rail-section">
+      {% block rail_project %}{% endblock %}
+    </div>
+    <div class="rail-section">
+      <ul class="rail-nav">
+        {% block rail_nav %}{% endblock %}
+      </ul>
+    </div>
+    <div class="rail-bottom">
+      <button
+        class="rail-shortcuts-btn"
+        id="shortcutsHintBtn"
+        onclick="document.getElementById('shortcuts-overlay').hidden=false"
+        title="Keyboard shortcuts (?)">
+        <kbd>?</kbd>
+      </button>
+    </div>
+  </nav>
+
+  <main class="app-main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<div id="shortcuts-overlay" class="shortcuts-overlay" hidden>
+  <div class="shortcuts-dialog">
+    <div class="shortcuts-header">
+      <span>Keyboard shortcuts</span>
+      <button class="shortcuts-close" id="shortcutsClose">&#x2715;</button>
+    </div>
+    <table class="shortcuts-table">
+      <tbody>
+        <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Next / previous row</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>Open selected row</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Focus filter</td></tr>
+        <tr><td><kbd>c</kbd></td><td>Compare selected runs</td></tr>
+        <tr><td><kbd>?</kbd></td><td>This overlay</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="/static/app.js" defer></script>
+
+</body>
+</html>

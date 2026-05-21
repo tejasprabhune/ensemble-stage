@@ -1,22 +1,33 @@
-{% extends "base.html" %}
+{% extends "base-app.html" %}
 
 {% block title %}Training run {{ training_run_id }} - Stage{% endblock %}
 
 {% block topnav %}
-<span class="breadcrumb">
-  <a href="/{{ org_slug }}">{{ org_slug }}</a>
-  <span class="sep">/</span>
-  <a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
-  <span class="sep">/</span>
-  training /
-  <strong class="mono">{{ training_run_id }}</strong>
-</span>
+<a href="/{{ org_slug }}">{{ org_slug }}</a>
+<span class="sep">/</span>
+<a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+<span class="sep">/</span>
+training
+<span class="sep">/</span>
+<span class="mono">{{ training_run_id }}</span>
+{% endblock %}
+
+{% block rail_project %}
+<a class="rail-project active" href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+{% endblock %}
+
+{% block rail_nav %}
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}">Runs</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/sweeps">Sweeps</a></li>
+<li class="rail-nav-item active"><a href="/{{ org_slug }}/{{ project_slug }}/training">Training</a></li>
+<li class="rail-nav-item"><a href="#">Comparisons</a></li>
+<li class="rail-nav-item"><a href="#">Settings</a></li>
 {% endblock %}
 
 {% block content %}
 <main class="stub-page">
-  <h2>Training run</h2>
+  <h1>Training run</h1>
   <p class="mono muted">{{ training_run_id }}</p>
-  <p>[stub: training run detail view coming soon]</p>
+  <span class="stub-notice">Coming soon</span>
 </main>
 {% endblock %}

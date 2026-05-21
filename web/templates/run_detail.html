@@ -1,131 +1,172 @@
-{% extends "base.html" %}
+{% extends "base-app.html" %}
 
 {% block title %}Run {{ run_id }} - Stage{% endblock %}
 
 {% block topnav %}
-<span class="breadcrumb">
-  <a href="/{{ org_slug }}">{{ org_slug }}</a>
-  <span class="sep">/</span>
-  <a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
-  <span class="sep">/</span>
-  runs
-  <span class="sep">/</span>
-  <span class="mono muted">{{ run_id }}</span>
-</span>
+<a href="/{{ org_slug }}">{{ org_slug }}</a>
+<span class="sep">/</span>
+<a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+<span class="sep">/</span>
+runs
+<span class="sep">/</span>
+<span class="mono">{{ run_id }}</span>
+{% endblock %}
+
+{% block rail_project %}
+<a class="rail-project active" href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+{% endblock %}
+
+{% block rail_nav %}
+<li class="rail-nav-item active"><a href="/{{ org_slug }}/{{ project_slug }}">Runs</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/sweeps">Sweeps</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/training">Training</a></li>
+<li class="rail-nav-item"><a href="#">Comparisons</a></li>
+<li class="rail-nav-item"><a href="#">Settings</a></li>
 {% endblock %}
 
 {% block content %}
-<div class="run-layout">
+<div style="display:flex; flex-direction:column; height:calc(100vh - var(--topbar-h-app));">
 
-  <aside class="run-sidebar">
-    <section class="meta-section">
-      <h4>Run</h4>
-      <dl class="meta-list">
-        <dt>ID</dt>
-        <dd class="mono" id="metaId">{{ run_id }}</dd>
-        <dt>Status</dt>
-        <dd id="metaStatus"><span class="status-badge status-queued">loading</span></dd>
-        <dt>Scenario</dt>
-        <dd id="metaScenario" class="muted">—</dd>
-        <dt>World</dt>
-        <dd id="metaWorld" class="muted">—</dd>
-        <dt>Backend</dt>
-        <dd id="metaBackend" class="muted">—</dd>
-        <dt>Started</dt>
-        <dd id="metaStarted" class="muted">—</dd>
-        <dt>Duration</dt>
-        <dd id="metaDuration" class="muted">—</dd>
-      </dl>
-    </section>
+  <div class="run-header" id="runHeader">
+    <span class="run-header-id" id="metaId">{{ run_id }}</span>
+    <button class="run-copy-btn" onclick="navigator.clipboard.writeText('{{ run_id }}')">copy</button>
+    <span class="run-header-sep">|</span>
+    <span class="run-header-label">Status</span>
+    <span id="metaStatus"><span class="run-header-value muted">loading</span></span>
+    <span class="run-header-sep">|</span>
+    <span class="run-header-label">Scenario</span>
+    <span class="run-header-value muted" id="metaScenario">—</span>
+    <span class="run-header-sep">|</span>
+    <span class="run-header-label">Model</span>
+    <span class="run-header-value muted" id="metaBackend">—</span>
+    <span class="run-header-sep">|</span>
+    <span class="run-header-label">World</span>
+    <span class="run-header-value muted" id="metaWorld">—</span>
+    <span class="run-header-sep">|</span>
+    <span class="run-header-label">Started</span>
+    <span class="run-header-value muted" id="metaStarted">—</span>
+    <span class="run-header-sep">|</span>
+    <span class="run-header-label">Duration</span>
+    <span class="run-header-value muted" id="metaDuration">—</span>
+  </div>
 
-    <section class="meta-section" id="costSection">
-      <h4>Cost</h4>
-      <dl class="meta-list" id="costBreakdown">
-        <dt>Total</dt>
-        <dd id="metaCostTotal" class="muted">—</dd>
-      </dl>
-    </section>
+  <div style="display:grid; grid-template-columns:1fr var(--sidebar-w); flex:1; min-height:0;">
 
-    <section class="meta-section" id="outcomeSection">
-      <h4>Outcome</h4>
-      <div id="metaOutcome" class="outcome-pre muted">—</div>
-    </section>
-
-    <section class="meta-section" id="metaSection">
-      <h4>Metadata</h4>
-      <div id="metaMetadata" class="outcome-pre muted">—</div>
-    </section>
-  </aside>
-
-  <main class="run-main">
-    <div class="viewer" id="traceViewer">
-      <div class="viewer-controls">
-        <button id="prevBtn" title="Previous event (←)">&#8592;</button>
-        <input type="range" id="slider" min="0" max="0" value="0" aria-label="Event position">
-        <button id="nextBtn" title="Next event (→)">&#8594;</button>
-        <button id="playBtn">play</button>
-        <span id="tickLabel" class="muted">0 / 0</span>
-        <div class="viewer-tabs">
-          <button class="viewer-tab active" id="tabTimeline">timeline</button>
-          <button class="viewer-tab" id="tabChat">chat</button>
+    <div class="run-main-area">
+      <div class="viewer" id="traceViewer">
+        <div class="viewer-controls">
+          <button id="prevBtn" title="Previous event (&#8592;)">&#8592;</button>
+          <input type="range" id="slider" min="0" max="0" value="0" aria-label="Event position">
+          <button id="nextBtn" title="Next event (&#8594;)">&#8594;</button>
+          <button id="playBtn">play</button>
+          <span id="tickLabel" class="muted">0 / 0</span>
+          <div class="viewer-tabs">
+            <button class="viewer-tab active" id="tabTimeline">timeline</button>
+            <button class="viewer-tab" id="tabChat">chat</button>
+          </div>
+          <span class="viewer-trace-label" id="traceLabel"></span>
         </div>
-        <span class="viewer-trace-label" id="traceLabel"></span>
-      </div>
 
-      <div id="timelineStage" class="viewer-stage">
-        <div class="panel" id="messagesPanel"><h4>actors</h4></div>
-        <div class="panel" id="toolsPanel"><h4>tool calls</h4></div>
-        <div class="panel" id="diffPanel"><h4>state changes</h4></div>
-      </div>
+        <div id="timelineStage" class="viewer-stage">
+          <div class="panel" id="messagesPanel"><h4>actors</h4></div>
+          <div class="panel" id="toolsPanel"><h4>tool calls</h4></div>
+          <div class="panel" id="diffPanel"><h4>state changes</h4></div>
+        </div>
 
-      <div id="chatStage" class="chat-stage" style="display:none">
-        <div class="chat-feed" id="chatFeed"></div>
+        <div id="chatStage" class="chat-stage" style="display:none">
+          <div class="chat-feed" id="chatFeed"></div>
+        </div>
       </div>
     </div>
-  </main>
 
+    <aside class="run-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Cost</div>
+        <div class="sidebar-section-body">
+          <dl class="meta-list" id="costBreakdown">
+            <dt>Total</dt>
+            <dd class="mono muted" id="metaCostTotal">—</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Actors</div>
+        <div class="sidebar-section-body">
+          <dl class="meta-list" id="actorsData">
+            <dt class="muted" colspan="2">—</dt>
+          </dl>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Outcome</div>
+        <div class="sidebar-section-body">
+          <pre class="outcome-pre" id="metaOutcome">—</pre>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Predicates</div>
+        <div class="sidebar-section-body">
+          <div class="muted" id="predicatesData" style="font-size:var(--text-sm)">—</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Hidden state</div>
+        <div class="sidebar-section-body">
+          <div class="muted" id="hiddenStateData" style="font-size:var(--text-sm)">—</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">Metadata</div>
+        <div class="sidebar-section-body">
+          <pre class="outcome-pre" id="metaMetadata">—</pre>
+        </div>
+      </div>
+    </aside>
+
+  </div>
 </div>
 
 <script>
-  // Populate sidebar from the run metadata endpoint.
   (function () {
     const runId = {{ run_id|json }};
-    const baseUrl = '';
 
     async function loadMeta() {
       try {
-        const res = await fetch(`${baseUrl}/v1/runs/${runId}`);
+        const res = await fetch(`/v1/runs/${runId}`);
         if (!res.ok) return;
         const run = await res.json();
 
         const statusEl = document.getElementById('metaStatus');
-        if (statusEl) {
-          statusEl.innerHTML = `<span class="status-badge status-${run.status}">${run.status}</span>`;
+        if (statusEl && run.status) {
+          const dot = `<span class="status-dot status-dot-${run.status}"></span>`;
+          statusEl.innerHTML = `${dot}<span class="run-header-value">${run.status}</span>`;
         }
         setText('metaScenario', run.scenario);
         setText('metaWorld', run.world);
         setText('metaBackend', run.backend);
-        setText('metaStarted', run.started_at ? new Date(run.started_at).toLocaleString() : '—');
-        if (run.wall_time_ms != null) {
-          setText('metaDuration', formatMs(run.wall_time_ms));
-        }
-        if (run.total_cost) {
-          setText('metaCostTotal', formatCost(run.total_cost));
-        }
+        setText('metaStarted', run.started_at ? new Date(run.started_at).toLocaleString() : null);
+        if (run.wall_time_ms != null) setText('metaDuration', formatMs(run.wall_time_ms));
+        if (run.total_cost) setText('metaCostTotal', formatCost(run.total_cost));
         if (run.outcome) {
           const el = document.getElementById('metaOutcome');
-          if (el) el.textContent = JSON.stringify(run.outcome, null, 2);
+          if (el) { el.textContent = JSON.stringify(run.outcome, null, 2); el.classList.remove('muted'); }
         }
         if (run.metadata && Object.keys(run.metadata).length > 0) {
           const el = document.getElementById('metaMetadata');
-          if (el) el.textContent = JSON.stringify(run.metadata, null, 2);
+          if (el) { el.textContent = JSON.stringify(run.metadata, null, 2); el.classList.remove('muted'); }
         }
       } catch (_) {}
     }
 
     function setText(id, val) {
+      if (val == null) return;
       const el = document.getElementById(id);
-      if (el && val != null) { el.textContent = val; el.classList.remove('muted'); }
+      if (el) { el.textContent = val; el.classList.remove('muted'); }
     }
 
     function formatMs(ms) {
@@ -142,7 +183,6 @@
     }
 
     loadMeta();
-    // Refresh metadata every 5 seconds while the run may be live.
     setInterval(loadMeta, 5000);
   })();
 
