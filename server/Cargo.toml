@@ -1,0 +1,32 @@
+[package]
+name = "stage-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }
+
+axum = { version = "0.7", features = ["macros"] }
+axum-extra = { version = "0.9", features = ["cookie", "typed-header"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "trace", "compression-gzip"] }
+
+askama = "0.12"
+askama_axum = "0.4"
+
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+jsonwebtoken = "9"
+sha2 = "0.10"
+time = "0.3"
+urlencoding = "2"
+dotenvy = "0.15"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
