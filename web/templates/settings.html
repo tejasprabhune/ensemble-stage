@@ -1,0 +1,94 @@
+{% extends "base-app.html" %}
+
+{% block title %}Settings - {{ project_slug }} - Stage{% endblock %}
+
+{% block topnav %}
+<a href="/{{ org_slug }}">{{ org_slug }}</a>
+<span class="sep">/</span>
+<a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+<span class="sep">/</span>
+settings
+{% endblock %}
+
+{% block rail_project %}
+<a class="rail-project active" href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+{% endblock %}
+
+{% block rail_nav %}
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}">Runs</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/sweeps">Sweeps</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/training">Training</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/compare">Compare</a></li>
+<li class="rail-nav-item active"><a href="/{{ org_slug }}/{{ project_slug }}/settings">Settings</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+
+  <div class="settings-section">
+    <h2 class="settings-heading">Project</h2>
+
+    {% if form_error != "" %}
+    <div class="form-error">{{ form_error }}</div>
+    {% endif %}
+
+    <form class="settings-form" method="post" action="/{{ org_slug }}/{{ project_slug }}/settings">
+      <input type="hidden" name="_method" value="patch">
+
+      <div class="form-row">
+        <label class="form-label" for="settingsName">Name</label>
+        <input class="form-input" id="settingsName" name="name" type="text"
+               value="{{ project_name }}" maxlength="100" required>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="settingsDesc">Description</label>
+        <textarea class="form-input" id="settingsDesc" name="description"
+                  rows="2" maxlength="500">{{ project_description }}</textarea>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Visibility</label>
+        <label class="form-checkbox">
+          <input type="checkbox" name="public" value="on" {% if project_public %}checked{% endif %}>
+          Public (anyone can view runs without signing in)
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Save changes</button>
+      </div>
+    </form>
+
+    <div class="settings-meta">
+      <dl class="kv-table">
+        <dt class="kv-key muted">Project ID</dt>
+        <dd class="kv-val mono">{{ project_id }}</dd>
+        <dt class="kv-key muted">Slug</dt>
+        <dd class="kv-val mono">{{ project_slug }}</dd>
+        <dt class="kv-key muted">Created</dt>
+        <dd class="kv-val">{{ created_at }}</dd>
+        <dt class="kv-key muted">Runs</dt>
+        <dd class="kv-val mono">{{ run_count }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="settings-section settings-danger">
+    <h2 class="settings-heading settings-heading-danger">Danger zone</h2>
+    <p class="muted">Deleting this project removes all runs, events, sweeps, and training runs. This cannot be undone.</p>
+
+    <details class="delete-confirm-details">
+      <summary class="btn btn-danger-outline">Delete project</summary>
+      <form class="delete-confirm-form" method="post"
+            action="/{{ org_slug }}/{{ project_slug }}/settings/delete">
+        <p>Type <strong>{{ project_slug }}</strong> to confirm.</p>
+        <input class="form-input mono" type="text" name="confirm_slug"
+               placeholder="{{ project_slug }}" autocomplete="off">
+        <button class="btn btn-danger" type="submit">Delete permanently</button>
+      </form>
+    </details>
+  </div>
+
+</div>
+{% endblock %}

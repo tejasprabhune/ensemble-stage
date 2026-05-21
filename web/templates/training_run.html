@@ -69,8 +69,8 @@ training
 
 <script>
 (function () {
-  const trainingRunId = {{ training_run_id|json }};
-  const currentStatus = {{ status|json }};
+  const trainingRunId = {{ training_run_id|json|safe }};
+  const currentStatus = {{ status|json|safe }};
 
   const charts = {};
   let pollTimer = null;

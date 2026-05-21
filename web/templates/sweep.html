@@ -79,9 +79,9 @@ sweeps
 
 <script>
 (function () {
-  const sweepId = {{ sweep_id|json }};
-  const orgSlug = {{ org_slug|json }};
-  const projectSlug = {{ project_slug|json }};
+  const sweepId = {{ sweep_id|json|safe }};
+  const orgSlug = {{ org_slug|json|safe }};
+  const projectSlug = {{ project_slug|json|safe }};
 
   async function load() {
     const r = await fetch(`/v1/sweeps/${sweepId}/runs`);
@@ -97,7 +97,7 @@ sweeps
     const running = runs.filter(r => r.status === 'running' || r.status === 'queued');
     const totalCost = completed.reduce((s, r) => s + (r.total_cost?.usd ?? 0), 0);
     const scores = completed
-      .map(r => Object.values(r.outcome?.scores ?? {})[0])
+      .map(r => Object.values(r.outcome ?? {})[0])
       .filter(v => typeof v === 'number');
     const meanScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : null;
 
@@ -154,7 +154,7 @@ sweeps
     const allFailed = runs.every(r => r.status === 'failed');
     const anyRunning = runs.some(r => r.status === 'running' || r.status === 'queued');
     const cls = allDone ? 'matrix-cell-ok' : allFailed ? 'matrix-cell-fail' : anyRunning ? 'matrix-cell-running' : 'matrix-cell-mixed';
-    const scores = runs.map(r => Object.values(r.outcome?.scores ?? {})[0]).filter(v => typeof v === 'number');
+    const scores = runs.map(r => Object.values(r.outcome ?? {})[0]).filter(v => typeof v === 'number');
     const score = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2) : '';
     const href = runs.length === 1 ? `/${orgSlug}/${projectSlug}/runs/${runs[0].id}` : '';
     const inner = `<span class="matrix-dot ${cls}"></span>${score ? `<span class="matrix-score">${score}</span>` : ''}`;

@@ -138,6 +138,21 @@ struct RunDetailTemplate {
 }
 
 #[derive(Template)]
+#[template(path = "settings.html")]
+struct SettingsTemplate {
+    org_slug: String,
+    project_slug: String,
+    user: UserCtx,
+    project_name: String,
+    project_description: String,
+    project_public: bool,
+    project_id: i64,
+    created_at: String,
+    run_count: i64,
+    form_error: String,
+}
+
+#[derive(Template)]
 #[template(path = "sweeps_list.html")]
 struct SweepsListTemplate {
     org_slug: String,
@@ -239,23 +254,23 @@ fn format_outcome(outcome: Option<&Value>) -> String {
         Some(v) => v,
         None => return "—".into(),
     };
-    if let Some(scores) = outcome.get("scores").and_then(|v| v.as_object()) {
-        let pairs: Vec<String> = scores
-            .iter()
-            .take(2)
-            .map(|(k, v)| {
-                let val = if let Some(f) = v.as_f64() {
-                    format!("{f:.2}")
-                } else {
-                    v.to_string()
-                };
-                format!("{k}={val}")
-            })
-            .collect();
-        pairs.join(" ")
-    } else {
-        "—".into()
-    }
+    let map = match outcome.as_object() {
+        Some(m) => m,
+        None => return "—".into(),
+    };
+    let pairs: Vec<String> = map
+        .iter()
+        .take(2)
+        .map(|(k, v)| {
+            let val = if let Some(f) = v.as_f64() {
+                format!("{f:.2}")
+            } else {
+                v.to_string()
+            };
+            format!("{k}={val}")
+        })
+        .collect();
+    if pairs.is_empty() { "—".into() } else { pairs.join(" ") }
 }
 
 fn summarize_sweep_config(config: &Value) -> String {
@@ -872,12 +887,14 @@ async fn org_page(
     State(state): State<AppState>,
     maybe_user: MaybeUser,
     Path(org_slug): Path<String>,
-) -> Result<Html<String>, AppError> {
-    let user_id = maybe_user
-        .0
-        .as_ref()
-        .map(|u| u.user_id)
-        .ok_or(AppError::NotFound)?;
+) -> Result<axum::response::Response, AppError> {
+    let user_id = match maybe_user.0.as_ref().map(|u| u.user_id) {
+        Some(id) => id,
+        None => {
+            let dest = format!("/auth/github/login?next=/{org_slug}");
+            return Ok(axum::response::Redirect::to(&dest).into_response());
+        }
+    };
 
     // Verify org exists and user is a member; 404 for both missing and non-member
     let row = sqlx::query_as::<_, (i64, String, bool)>(
@@ -911,6 +928,7 @@ async fn org_page(
         form_slug: String::new(),
         form_name: String::new(),
     })
+    .map(|h| h.into_response())
 }
 
 async fn fetch_org_projects(
@@ -1047,6 +1065,138 @@ struct CompareQuery {
     b: Option<String>,
 }
 
+async fn settings(
+    State(state): State<AppState>,
+    RequireUser(user): RequireUser,
+    Path((org_slug, project_slug)): Path<(String, String)>,
+) -> Result<Html<String>, AppError> {
+    type PRow = (i64, String, Option<String>, bool, DateTime<Utc>);
+    let row = sqlx::query_as::<_, PRow>(
+        r#"
+        SELECT p.id, p.name, p.description, p.public, p.created_at
+        FROM projects p
+        JOIN orgs o ON o.id = p.org_id
+        JOIN org_members om ON om.org_id = o.id
+        WHERE o.slug = $1 AND p.slug = $2 AND om.user_id = $3
+        "#,
+    )
+    .bind(&org_slug)
+    .bind(&project_slug)
+    .bind(user.user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or(AppError::NotFound)?;
+
+    let run_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM runs WHERE project_id = $1")
+        .bind(row.0)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(0);
+
+    let maybe_user = MaybeUser(Some(crate::auth::middleware::AuthUser {
+        user_id: user.user_id,
+        github_login: user.github_login.clone(),
+    }));
+    render(SettingsTemplate {
+        org_slug,
+        project_slug,
+        user: UserCtx::from(&maybe_user),
+        project_name: row.1,
+        project_description: row.2.unwrap_or_default(),
+        project_public: row.3,
+        project_id: row.0,
+        created_at: row.4.format("%b %d %Y").to_string(),
+        run_count,
+        form_error: String::new(),
+    })
+}
+
+#[derive(Deserialize)]
+struct UpdateSettingsForm {
+    name: String,
+    description: Option<String>,
+    public: Option<String>,
+}
+
+async fn update_settings(
+    State(state): State<AppState>,
+    RequireUser(user): RequireUser,
+    Path((org_slug, project_slug)): Path<(String, String)>,
+    Form(form): Form<UpdateSettingsForm>,
+) -> Result<axum::response::Response, AppError> {
+    let public = form.public.as_deref() == Some("on") || form.public.as_deref() == Some("true");
+    let name = form.name.trim().to_string();
+    let description = form.description.as_deref().filter(|s| !s.is_empty()).map(str::trim).map(str::to_string);
+
+    if name.is_empty() || name.len() > 100 {
+        return Err(AppError::BadRequest("Name must be between 1 and 100 characters.".into()));
+    }
+
+    let updated = sqlx::query_scalar::<_, i64>(
+        r#"
+        UPDATE projects p SET name = $3, description = $4, public = $5
+        FROM orgs o
+        JOIN org_members om ON om.org_id = o.id
+        WHERE p.org_id = o.id AND o.slug = $1 AND p.slug = $2 AND om.user_id = $6
+        RETURNING p.id
+        "#,
+    )
+    .bind(&org_slug)
+    .bind(&project_slug)
+    .bind(&name)
+    .bind(&description)
+    .bind(public)
+    .bind(user.user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if updated.is_none() {
+        return Err(AppError::NotFound);
+    }
+
+    Ok(axum::response::Redirect::to(&format!("/{org_slug}/{project_slug}/settings")).into_response())
+}
+
+#[derive(Deserialize)]
+struct DeleteProjectForm {
+    confirm_slug: String,
+}
+
+async fn delete_project(
+    State(state): State<AppState>,
+    RequireUser(user): RequireUser,
+    Path((org_slug, project_slug)): Path<(String, String)>,
+    Form(form): Form<DeleteProjectForm>,
+) -> Result<axum::response::Response, AppError> {
+    if form.confirm_slug.trim() != project_slug {
+        return Err(AppError::BadRequest("Slug confirmation did not match.".into()));
+    }
+
+    let deleted = sqlx::query_scalar::<_, i64>(
+        r#"
+        DELETE FROM projects p
+        USING orgs o, org_members om
+        WHERE p.org_id = o.id AND om.org_id = o.id
+          AND o.slug = $1 AND p.slug = $2 AND om.user_id = $3
+        RETURNING p.id
+        "#,
+    )
+    .bind(&org_slug)
+    .bind(&project_slug)
+    .bind(user.user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if deleted.is_none() {
+        return Err(AppError::NotFound);
+    }
+
+    Ok(axum::response::Redirect::to(&format!("/{org_slug}")).into_response())
+}
+
 async fn compare(
     maybe_user: MaybeUser,
     Path((org_slug, project_slug)): Path<(String, String)>,
@@ -1066,7 +1216,6 @@ async fn compare(
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(landing))
-        // org page -- must come before /:org_slug/:project_slug so it matches one segment
         .route("/:org_slug", get(org_page))
         .route("/:org_slug/projects", post(create_project_web))
         .route("/:org_slug/:project_slug", get(project))
@@ -1075,11 +1224,16 @@ pub fn router() -> Router<AppState> {
         .route("/:org_slug/:project_slug/sweeps", get(sweeps_list))
         .route("/:org_slug/:project_slug/sweeps/:sweep_id", get(sweep))
         .route("/:org_slug/:project_slug/training", get(training_list))
-        .route(
-            "/:org_slug/:project_slug/training_runs/:id",
-            get(training_run),
-        )
+        .route("/:org_slug/:project_slug/training_runs/:id", get(training_run))
         .route("/:org_slug/:project_slug/compare", get(compare))
+        .route(
+            "/:org_slug/:project_slug/settings",
+            get(settings).post(update_settings),
+        )
+        .route(
+            "/:org_slug/:project_slug/settings/delete",
+            post(delete_project),
+        )
         .route("/me", get(account))
         .route("/me/keys", post(create_key))
         .route("/me/keys/:id", delete(revoke_key))

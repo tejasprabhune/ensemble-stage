@@ -60,10 +60,10 @@ compare
 {% if !run_id_a.is_empty() && !run_id_b.is_empty() %}
 <script>
 (function () {
-  const runIdA = {{ run_id_a|json }};
-  const runIdB = {{ run_id_b|json }};
-  const orgSlug = {{ org_slug|json }};
-  const projectSlug = {{ project_slug|json }};
+  const runIdA = {{ run_id_a|json|safe }};
+  const runIdB = {{ run_id_b|json|safe }};
+  const orgSlug = {{ org_slug|json|safe }};
+  const projectSlug = {{ project_slug|json|safe }};
 
   async function loadRun(id) {
     const r = await fetch(`/v1/runs/${id}`);
@@ -84,11 +84,12 @@ compare
   }
 
   function scoreRows(outcomeA, outcomeB) {
-    const keys = new Set([
-      ...Object.keys(outcomeA?.scores ?? {}),
-      ...Object.keys(outcomeB?.scores ?? {}),
-    ]);
-    return [...keys].map(k => metaRow(k, outcomeA?.scores?.[k]?.toFixed(3), outcomeB?.scores?.[k]?.toFixed(3))).join('');
+    const flat = o => (o && typeof o === 'object') ? o : {};
+    const keys = new Set([...Object.keys(flat(outcomeA)), ...Object.keys(flat(outcomeB))]);
+    return [...keys].map(k => {
+      const a = flat(outcomeA)[k], b = flat(outcomeB)[k];
+      return metaRow(k, typeof a === 'number' ? a.toFixed(3) : a, typeof b === 'number' ? b.toFixed(3) : b);
+    }).join('');
   }
 
   function eventCell(ev) {
