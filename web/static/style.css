@@ -891,6 +891,27 @@ table.diff th {
   padding: 56px 40px;
 }
 
+/* Persistent shortcuts hint button */
+
+.shortcuts-hint-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 90;
+  background: var(--bg-surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.shortcuts-hint-btn:hover { opacity: 1; }
+
 /* Shortcuts overlay */
 
 .shortcuts-overlay {
