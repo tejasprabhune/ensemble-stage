@@ -1,0 +1,71 @@
+@import url("https://use.typekit.net/fsh5jhv.css");
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/static/fonts/Inter-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --color-bg:            #141312;
+  --color-bg-elevated:   #1E1D1C;
+  --color-fg:            #E5E0DB;
+  --color-fg-muted:      #8A827A;
+  --color-fg-subtle:     #5A5652;
+  --color-border:        #2C2A28;
+  --color-border-strong: #4A4642;
+  --color-accent:        #B8956A;
+  --color-accent-fg:     #141312;
+  --color-link:          #B8956A;
+  --color-link-hover:    #CCA87A;
+  --color-success:       #5A9467;
+  --color-warning:       #C49A3A;
+  --color-error:         #C45A5A;
+  --color-code-bg:       #1C1A18;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 40px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'calling-code', monospace;
+
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 14px;
+  --text-md:   16px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+  --text-2xl:  28px;
+  --text-3xl:  32px;
+
+  --topbar-h-public: 60px;
+  --topbar-h-app:    40px;
+  --rail-w:    200px;
+  --sidebar-w: 320px;
+}
+
+[data-theme="light"] {
+  --color-bg:            #F5F3F0;
+  --color-bg-elevated:   #FFFFFF;
+  --color-fg:            #1C1917;
+  --color-fg-muted:      #6B6560;
+  --color-fg-subtle:     #9B9590;
+  --color-border:        #D8D3CE;
+  --color-border-strong: #A8A39E;
+  --color-accent:        #7B4F3A;
+  --color-accent-fg:     #F5F3F0;
+  --color-link:          #7B4F3A;
+  --color-link-hover:    #9B6F5A;
+  --color-success:       #3D6A47;
+  --color-warning:       #8B6A1A;
+  --color-error:         #8B2A2A;
+  --color-code-bg:       #EDE8E3;
+}
