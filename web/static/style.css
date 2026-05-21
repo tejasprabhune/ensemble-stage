@@ -1816,7 +1816,7 @@ textarea.form-input {
   cursor: pointer;
 }
 
-.compare-picker {
+.sweep-compare-modal {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 300;
@@ -1825,7 +1825,7 @@ textarea.form-input {
   justify-content: center;
 }
 
-.compare-picker.open { display: flex; }
+.sweep-compare-modal.open { display: flex; }
 
 .cp-overlay {
   position: absolute;
@@ -2057,7 +2057,7 @@ textarea.form-input {
   padding: var(--space-4) var(--space-5);
 }
 
-.compare-picker {
+.sweep-compare-modal {
   max-width: 480px;
 }
 
