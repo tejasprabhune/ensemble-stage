@@ -100,55 +100,48 @@ pub async fn callback(
 }
 
 async fn upsert_user(state: &AppState, github_user: &GithubUser) -> Result<i64, AppError> {
-    let row = sqlx::query_as::<_, (i64, i64)>(
+    // Create the personal org first so the FK on users.default_org_id is
+    // satisfied when we insert the user row.
+    let org_id: i64 = sqlx::query_scalar(
+        r#"
+        INSERT INTO orgs (slug, name)
+        VALUES ($1, $1)
+        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+        RETURNING id
+        "#,
+    )
+    .bind(&github_user.login)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let user_id: i64 = sqlx::query_scalar(
         r#"
         INSERT INTO users (github_id, github_login, email, default_org_id)
-        VALUES ($1, $2, $3, 0)
+        VALUES ($1, $2, $3, $4)
         ON CONFLICT (github_id) DO UPDATE
-          SET github_login = EXCLUDED.github_login,
-              email = COALESCE(EXCLUDED.email, users.email)
-        RETURNING id, default_org_id
+          SET github_login  = EXCLUDED.github_login,
+              email         = COALESCE(EXCLUDED.email, users.email),
+              default_org_id = EXCLUDED.default_org_id
+        RETURNING id
         "#,
     )
     .bind(github_user.id)
     .bind(&github_user.login)
     .bind(&github_user.email)
+    .bind(org_id)
     .fetch_one(&state.pool)
     .await
     .map_err(AppError::Database)?;
 
-    let (user_id, default_org_id) = row;
-
-    if default_org_id == 0 {
-        let org_id: i64 = sqlx::query_scalar(
-            r#"
-            INSERT INTO orgs (slug, name)
-            VALUES ($1, $1)
-            ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
-            RETURNING id
-            "#,
-        )
-        .bind(&github_user.login)
-        .fetch_one(&state.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        sqlx::query(
-            "INSERT INTO org_members (org_id, user_id, role) VALUES ($1, $2, 'owner') ON CONFLICT DO NOTHING",
-        )
-        .bind(org_id)
-        .bind(user_id)
-        .execute(&state.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        sqlx::query("UPDATE users SET default_org_id = $1 WHERE id = $2")
-            .bind(org_id)
-            .bind(user_id)
-            .execute(&state.pool)
-            .await
-            .map_err(AppError::Database)?;
-    }
+    sqlx::query(
+        "INSERT INTO org_members (org_id, user_id, role) VALUES ($1, $2, 'owner') ON CONFLICT DO NOTHING",
+    )
+    .bind(org_id)
+    .bind(user_id)
+    .execute(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
 
     Ok(user_id)
 }
