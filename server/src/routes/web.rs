@@ -178,7 +178,7 @@ fn format_cost(cost: Option<&Value>) -> String {
         None => return "—".into(),
     };
     if let Some(usd) = cost.get("usd").and_then(|v| v.as_f64()) {
-        format!("${:.4}", usd)
+        format!("${usd:.4}")
     } else {
         "—".into()
     }
@@ -195,7 +195,7 @@ fn format_outcome(outcome: Option<&Value>) -> String {
             .take(2)
             .map(|(k, v)| {
                 let val = if let Some(f) = v.as_f64() {
-                    format!("{:.2}", f)
+                    format!("{f:.2}")
                 } else {
                     v.to_string()
                 };
@@ -211,10 +211,18 @@ fn format_outcome(outcome: Option<&Value>) -> String {
 fn summarize_sweep_config(config: &Value) -> String {
     let mut parts = Vec::new();
     if let Some(scenarios) = config.get("scenarios").and_then(|v| v.as_array()) {
-        parts.push(format!("{} scenario{}", scenarios.len(), if scenarios.len() == 1 { "" } else { "s" }));
+        parts.push(format!(
+            "{} scenario{}",
+            scenarios.len(),
+            if scenarios.len() == 1 { "" } else { "s" }
+        ));
     }
     if let Some(backends) = config.get("backends").and_then(|v| v.as_array()) {
-        parts.push(format!("{} backend{}", backends.len(), if backends.len() == 1 { "" } else { "s" }));
+        parts.push(format!(
+            "{} backend{}",
+            backends.len(),
+            if backends.len() == 1 { "" } else { "s" }
+        ));
     }
     if let Some(n) = config.get("n_trials").and_then(|v| v.as_i64()) {
         parts.push(format!("{n} trial{}", if n == 1 { "" } else { "s" }));
@@ -241,16 +249,29 @@ type RunDbRow = (
     DateTime<Utc>,
 );
 
+struct FetchRunsParams<'a> {
+    project_id: i64,
+    org_slug: &'a str,
+    project_slug: &'a str,
+    filter: &'a str,
+    sort: &'a str,
+    cursor_str: &'a str,
+    limit: i64,
+}
+
 async fn fetch_runs(
     state: &AppState,
-    project_id: i64,
-    org_slug: &str,
-    project_slug: &str,
-    filter: &str,
-    sort: &str,
-    cursor_str: &str,
-    limit: i64,
+    p: FetchRunsParams<'_>,
 ) -> Result<(Vec<RunRow>, Option<String>), AppError> {
+    let FetchRunsParams {
+        project_id,
+        org_slug,
+        project_slug,
+        filter,
+        sort,
+        cursor_str,
+        limit,
+    } = p;
     #[derive(serde::Deserialize)]
     struct Cursor {
         created_at: DateTime<Utc>,
@@ -268,7 +289,11 @@ async fn fetch_runs(
 
     let cursor_at: Option<DateTime<Utc>> = cursor.as_ref().map(|c| c.created_at);
     let cursor_id: Option<Uuid> = cursor.as_ref().map(|c| c.id);
-    let filter_val = if filter.is_empty() { None } else { Some(filter) };
+    let filter_val = if filter.is_empty() {
+        None
+    } else {
+        Some(filter)
+    };
 
     let (order_sql, cursor_cmp) = match sort {
         "created_at:asc" => (
@@ -366,7 +391,14 @@ async fn fetch_project_id(
 }
 
 async fn fetch_api_keys(state: &AppState, user_id: i64) -> Result<Vec<ApiKeyRow>, AppError> {
-    type KeyRow = (i64, String, String, Option<DateTime<Utc>>, DateTime<Utc>, Option<DateTime<Utc>>);
+    type KeyRow = (
+        i64,
+        String,
+        String,
+        Option<DateTime<Utc>>,
+        DateTime<Utc>,
+        Option<DateTime<Utc>>,
+    );
     let rows = sqlx::query_as::<_, KeyRow>(
         "SELECT id, name, scope::text, last_used_at, created_at, expires_at FROM api_keys WHERE user_id = $1 ORDER BY created_at DESC",
     )
@@ -381,15 +413,21 @@ async fn fetch_api_keys(state: &AppState, user_id: i64) -> Result<Vec<ApiKeyRow>
             id: r.0,
             name: r.1,
             scope: r.2,
-            last_used_at: r.3.map(|t| t.format("%b %d %H:%M").to_string()).unwrap_or_else(|| "never".into()),
+            last_used_at: r
+                .3
+                .map(|t| t.format("%b %d %H:%M").to_string())
+                .unwrap_or_else(|| "never".into()),
             created_at: r.4.format("%b %d %Y").to_string(),
-            expires_at: r.5.map(|t| t.format("%b %d %Y").to_string()).unwrap_or_else(|| "never".into()),
+            expires_at: r
+                .5
+                .map(|t| t.format("%b %d %Y").to_string())
+                .unwrap_or_else(|| "never".into()),
         })
         .collect())
 }
 
 #[derive(Deserialize)]
-struct RunsQuery {
+struct WebRunsQuery {
     filter: Option<String>,
     sort: Option<String>,
     cursor: Option<String>,
@@ -405,14 +443,26 @@ async fn project(
     State(state): State<AppState>,
     maybe_user: MaybeUser,
     Path((org_slug, project_slug)): Path<(String, String)>,
-    Query(q): Query<RunsQuery>,
+    Query(q): Query<WebRunsQuery>,
 ) -> Result<Html<String>, AppError> {
     let project_id = fetch_project_id(&state, &org_slug, &project_slug).await?;
     let filter = q.filter.as_deref().unwrap_or("");
     let sort = q.sort.as_deref().unwrap_or("created_at:desc");
     let cursor = q.cursor.as_deref().unwrap_or("");
 
-    let (runs, next_cursor) = fetch_runs(&state, project_id, &org_slug, &project_slug, filter, sort, cursor, 50).await?;
+    let (runs, next_cursor) = fetch_runs(
+        &state,
+        FetchRunsParams {
+            project_id,
+            org_slug: &org_slug,
+            project_slug: &project_slug,
+            filter,
+            sort,
+            cursor_str: cursor,
+            limit: 50,
+        },
+    )
+    .await?;
     let partial_url = format!("/{org_slug}/{project_slug}/runs-partial");
 
     render(ProjectTemplate {
@@ -431,14 +481,26 @@ async fn project(
 async fn runs_partial(
     State(state): State<AppState>,
     Path((org_slug, project_slug)): Path<(String, String)>,
-    Query(q): Query<RunsQuery>,
+    Query(q): Query<WebRunsQuery>,
 ) -> Result<Html<String>, AppError> {
     let project_id = fetch_project_id(&state, &org_slug, &project_slug).await?;
     let filter = q.filter.as_deref().unwrap_or("");
     let sort = q.sort.as_deref().unwrap_or("created_at:desc");
     let cursor = q.cursor.as_deref().unwrap_or("");
 
-    let (runs, next_cursor) = fetch_runs(&state, project_id, &org_slug, &project_slug, filter, sort, cursor, 50).await?;
+    let (runs, next_cursor) = fetch_runs(
+        &state,
+        FetchRunsParams {
+            project_id,
+            org_slug: &org_slug,
+            project_slug: &project_slug,
+            filter,
+            sort,
+            cursor_str: cursor,
+            limit: 50,
+        },
+    )
+    .await?;
     let partial_url = format!("/{org_slug}/{project_slug}/runs-partial");
 
     render(RunsRowsPartial {
@@ -456,13 +518,18 @@ async fn run_detail(
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, run_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
-    let run_uuid: Uuid = run_id
-        .parse()
-        .map_err(|_| AppError::NotFound)?;
+    let run_uuid: Uuid = run_id.parse().map_err(|_| AppError::NotFound)?;
 
     type RunRow = (
-        String, String, String, String,
-        Option<DateTime<Utc>>, Option<i64>, Option<Value>, Option<Value>, Option<Value>,
+        String,
+        String,
+        String,
+        String,
+        Option<DateTime<Utc>>,
+        Option<i64>,
+        Option<Value>,
+        Option<Value>,
+        Option<Value>,
     );
     let row = sqlx::query_as::<_, RunRow>(
         r#"
@@ -479,11 +546,15 @@ async fn run_detail(
     .ok_or(AppError::NotFound)?;
 
     let outcome_json = serde_json::to_string(&row.7).unwrap_or_else(|_| "null".into());
-    let outcome_display = row.7.as_ref()
+    let outcome_display = row
+        .7
+        .as_ref()
         .map(|v| serde_json::to_string_pretty(v).unwrap_or_else(|_| "—".into()))
         .unwrap_or_else(|| "—".into());
     let metadata_json = serde_json::to_string(&row.8).unwrap_or_else(|_| "null".into());
-    let metadata_display = row.8.as_ref()
+    let metadata_display = row
+        .8
+        .as_ref()
         .map(|v| serde_json::to_string_pretty(v).unwrap_or_else(|_| "—".into()))
         .unwrap_or_else(|| "—".into());
 
@@ -512,11 +583,15 @@ async fn sweep(
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, sweep_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
-    let sweep_uuid: Uuid = sweep_id
-        .parse()
-        .map_err(|_| AppError::NotFound)?;
+    let sweep_uuid: Uuid = sweep_id.parse().map_err(|_| AppError::NotFound)?;
 
-    type SweepRow = (String, Option<DateTime<Utc>>, Option<DateTime<Utc>>, DateTime<Utc>, Value);
+    type SweepRow = (
+        String,
+        Option<DateTime<Utc>>,
+        Option<DateTime<Utc>>,
+        DateTime<Utc>,
+        Value,
+    );
     let row = sqlx::query_as::<_, SweepRow>(
         "SELECT status::text, started_at, ended_at, created_at, config FROM sweeps WHERE id = $1",
     )
@@ -547,11 +622,17 @@ async fn training_run(
     maybe_user: MaybeUser,
     Path((org_slug, project_slug, training_run_id)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AppError> {
-    let tr_uuid: Uuid = training_run_id
-        .parse()
-        .map_err(|_| AppError::NotFound)?;
+    let tr_uuid: Uuid = training_run_id.parse().map_err(|_| AppError::NotFound)?;
 
-    type TrRow = (String, String, String, Option<DateTime<Utc>>, Option<DateTime<Utc>>, DateTime<Utc>, Option<String>);
+    type TrRow = (
+        String,
+        String,
+        String,
+        Option<DateTime<Utc>>,
+        Option<DateTime<Utc>>,
+        DateTime<Utc>,
+        Option<String>,
+    );
     let row = sqlx::query_as::<_, TrRow>(
         "SELECT status::text, persona_name, base_model, started_at, ended_at, created_at, artifact_uri FROM training_runs WHERE id = $1",
     )
@@ -608,10 +689,18 @@ async fn create_key(
 ) -> Result<Html<String>, AppError> {
     let scope_str = match form.scope.as_str() {
         "push" | "admin" => form.scope.as_str(),
-        _ => return Err(AppError::BadRequest("scope must be 'push' or 'admin'".into())),
+        _ => {
+            return Err(AppError::BadRequest(
+                "scope must be 'push' or 'admin'".into(),
+            ))
+        }
     };
 
-    let prefix = if scope_str == "push" { "stage_sk_" } else { "stage_ak_" };
+    let prefix = if scope_str == "push" {
+        "stage_sk_"
+    } else {
+        "stage_ak_"
+    };
     let raw_key = format!(
         "{}{}{}",
         prefix,

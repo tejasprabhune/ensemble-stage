@@ -46,10 +46,7 @@ pub struct CreateApiKeyResponse {
     pub key: String,
 }
 
-fn resolve_caller(
-    maybe_user: &MaybeUser,
-    maybe_key: &MaybeApiKey,
-) -> Result<i64, AppError> {
+fn resolve_caller(maybe_user: &MaybeUser, maybe_key: &MaybeApiKey) -> Result<i64, AppError> {
     if let Some(user) = &maybe_user.0 {
         return Ok(user.user_id);
     }
@@ -98,7 +95,17 @@ pub async fn list_api_keys(
 ) -> Result<Json<Vec<ApiKeyResponse>>, AppError> {
     let user_id = resolve_caller(&maybe_user, &maybe_key)?;
 
-    let rows = sqlx::query_as::<_, (i64, String, String, Option<DateTime<Utc>>, DateTime<Utc>, Option<DateTime<Utc>>)>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            i64,
+            String,
+            String,
+            Option<DateTime<Utc>>,
+            DateTime<Utc>,
+            Option<DateTime<Utc>>,
+        ),
+    >(
         r#"
         SELECT id, name, scope::text, last_used_at, created_at, expires_at
         FROM api_keys
@@ -138,7 +145,11 @@ pub async fn create_api_key(
     let scope = match body.scope.as_str() {
         "push" => ApiKeyScope::Push,
         "admin" => ApiKeyScope::Admin,
-        _ => return Err(AppError::BadRequest("scope must be 'push' or 'admin'".into())),
+        _ => {
+            return Err(AppError::BadRequest(
+                "scope must be 'push' or 'admin'".into(),
+            ))
+        }
     };
 
     let prefix = match scope {

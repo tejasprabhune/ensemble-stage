@@ -25,7 +25,10 @@ pub async fn login(State(state): State<AppState>, jar: CookieJar) -> impl IntoRe
     csrf_cookie.set_same_site(SameSite::Lax);
     csrf_cookie.set_path("/auth/github/callback");
     csrf_cookie.set_max_age(time::Duration::minutes(10));
-    (jar.add(csrf_cookie), Redirect::to(&github_auth_url(&state, &csrf)))
+    (
+        jar.add(csrf_cookie),
+        Redirect::to(&github_auth_url(&state, &csrf)),
+    )
 }
 
 #[derive(Deserialize)]
@@ -107,9 +110,14 @@ pub async fn callback(
     session_cookie.set_path("/");
     session_cookie.set_max_age(time::Duration::days(30));
 
-    let remove_csrf = Cookie::build(("stage_csrf", "")).path("/auth/github/callback").build();
+    let remove_csrf = Cookie::build(("stage_csrf", ""))
+        .path("/auth/github/callback")
+        .build();
 
-    Ok((jar.add(session_cookie).remove(remove_csrf), Redirect::to("/")))
+    Ok((
+        jar.add(session_cookie).remove(remove_csrf),
+        Redirect::to("/"),
+    ))
 }
 
 async fn upsert_user(state: &AppState, github_user: &GithubUser) -> Result<i64, AppError> {

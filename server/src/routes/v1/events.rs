@@ -154,9 +154,7 @@ pub async fn append_events(
         match result {
             Ok(r) if r.rows_affected() == 1 => accepted += 1,
             Ok(_) => {}
-            Err(sqlx::Error::Database(ref e))
-                if e.constraint() == Some("run_events_pkey") =>
-            {
+            Err(sqlx::Error::Database(ref e)) if e.constraint() == Some("run_events_pkey") => {
                 return Err(AppError::Conflict(format!(
                     "duplicate sequence_number {} in this run",
                     event.sequence_number

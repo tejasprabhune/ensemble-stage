@@ -145,7 +145,19 @@ pub async fn get_project(
     maybe_key: MaybeApiKey,
     Path((org_slug, project_slug)): Path<(String, String)>,
 ) -> Result<Json<ProjectResponse>, AppError> {
-    let row = sqlx::query_as::<_, (i64, i64, String, String, String, bool, Option<String>, DateTime<Utc>)>(
+    let row = sqlx::query_as::<
+        _,
+        (
+            i64,
+            i64,
+            String,
+            String,
+            String,
+            bool,
+            Option<String>,
+            DateTime<Utc>,
+        ),
+    >(
         r#"
         SELECT p.id, p.org_id, o.slug, p.slug, p.name, p.public, p.description, p.created_at
         FROM projects p
@@ -222,9 +234,9 @@ pub async fn list_runs(
         return Err(AppError::Forbidden);
     }
 
-    let limit = q.limit.unwrap_or(50).min(200).max(1);
+    let limit = q.limit.unwrap_or(50).clamp(1, 200);
     let sort = q.sort.as_deref().unwrap_or("created_at:desc");
-    let filter_pattern = q.filter.as_ref().map(|f| format!("%{}%", f));
+    let filter_pattern = q.filter.as_ref().map(|f| format!("%{f}%"));
 
     let cursor = q.cursor.as_deref().and_then(decode_cursor);
 

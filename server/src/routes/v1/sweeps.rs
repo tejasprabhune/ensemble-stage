@@ -87,21 +87,19 @@ pub async fn register_run(
     Json(body): Json<RegisterRunBody>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // Verify sweep and run exist in the same project, and caller has access
-    let sweep_project_id: i64 =
-        sqlx::query_scalar("SELECT project_id FROM sweeps WHERE id = $1")
-            .bind(sweep_id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(AppError::Database)?
-            .ok_or(AppError::NotFound)?;
+    let sweep_project_id: i64 = sqlx::query_scalar("SELECT project_id FROM sweeps WHERE id = $1")
+        .bind(sweep_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or(AppError::NotFound)?;
 
-    let run_project_id: i64 =
-        sqlx::query_scalar("SELECT project_id FROM runs WHERE id = $1")
-            .bind(body.run_id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(AppError::Database)?
-            .ok_or(AppError::NotFound)?;
+    let run_project_id: i64 = sqlx::query_scalar("SELECT project_id FROM runs WHERE id = $1")
+        .bind(body.run_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or(AppError::NotFound)?;
 
     if sweep_project_id != run_project_id {
         return Err(AppError::BadRequest(
@@ -169,14 +167,12 @@ pub async fn update_status(
     let is_terminal = matches!(body.status.as_str(), "completed" | "failed" | "cancelled");
 
     if is_terminal {
-        sqlx::query(
-            "UPDATE sweeps SET status = $2::sweep_status, ended_at = NOW() WHERE id = $1",
-        )
-        .bind(sweep_id)
-        .bind(&body.status)
-        .execute(&state.pool)
-        .await
-        .map_err(AppError::Database)?;
+        sqlx::query("UPDATE sweeps SET status = $2::sweep_status, ended_at = NOW() WHERE id = $1")
+            .bind(sweep_id)
+            .bind(&body.status)
+            .execute(&state.pool)
+            .await
+            .map_err(AppError::Database)?;
     } else {
         sqlx::query(
             "UPDATE sweeps SET status = $2::sweep_status, started_at = COALESCE(started_at, NOW()) WHERE id = $1",

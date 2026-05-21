@@ -117,14 +117,12 @@ pub async fn update_status(
     }
 
     // Verify the run exists and the caller has write access
-    let (project_id,): (i64,) = sqlx::query_as(
-        "SELECT r.project_id FROM runs r WHERE r.id = $1",
-    )
-    .bind(run_id)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(AppError::Database)?
-    .ok_or(AppError::NotFound)?;
+    let (project_id,): (i64,) = sqlx::query_as("SELECT r.project_id FROM runs r WHERE r.id = $1")
+        .bind(run_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or(AppError::NotFound)?;
 
     let is_member: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM org_members om JOIN projects p ON p.org_id = om.org_id WHERE p.id = $1 AND om.user_id = $2)",

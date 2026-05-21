@@ -2,8 +2,8 @@ app = "ensemble-stage"
 primary_region = "ord"
 
 [build]
-  dockerfile = "ops/Dockerfile"
-  context = "."
+  dockerfile = "Dockerfile"
+  context = ".."
 
 [env]
   PORT = "8080"

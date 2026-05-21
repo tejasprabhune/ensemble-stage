@@ -114,13 +114,12 @@ pub async fn append_metrics(
         ));
     }
 
-    let project_id: i64 =
-        sqlx::query_scalar("SELECT project_id FROM training_runs WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(AppError::Database)?
-            .ok_or(AppError::NotFound)?;
+    let project_id: i64 = sqlx::query_scalar("SELECT project_id FROM training_runs WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or(AppError::NotFound)?;
 
     let is_member: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM org_members om JOIN projects p ON p.org_id = om.org_id WHERE p.id = $1 AND om.user_id = $2)",
@@ -178,13 +177,12 @@ pub async fn update_status(
         )));
     }
 
-    let project_id: i64 =
-        sqlx::query_scalar("SELECT project_id FROM training_runs WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(AppError::Database)?
-            .ok_or(AppError::NotFound)?;
+    let project_id: i64 = sqlx::query_scalar("SELECT project_id FROM training_runs WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or(AppError::NotFound)?;
 
     let is_member: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM org_members om JOIN projects p ON p.org_id = om.org_id WHERE p.id = $1 AND om.user_id = $2)",

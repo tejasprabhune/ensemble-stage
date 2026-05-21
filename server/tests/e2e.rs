@@ -61,7 +61,11 @@ async fn setup(pool: PgPool) -> (axum::Router, String, String) {
         .unwrap();
 
     // Create a push-scoped API key
-    let raw_key = format!("stage_sk_{}{}", Uuid::new_v4().as_simple(), Uuid::new_v4().as_simple());
+    let raw_key = format!(
+        "stage_sk_{}{}",
+        Uuid::new_v4().as_simple(),
+        Uuid::new_v4().as_simple()
+    );
     let key_hash = hash_api_key(&raw_key);
     sqlx::query(
         "INSERT INTO api_keys (user_id, scope, name, key_hash) VALUES ($1, 'push', 'smoke-test', $2)",
@@ -72,7 +76,11 @@ async fn setup(pool: PgPool) -> (axum::Router, String, String) {
     .await
     .unwrap();
 
-    (router, raw_key, format!("http://localhost/testuser/testproject"))
+    (
+        router,
+        raw_key,
+        "http://localhost/testuser/testproject".to_string(),
+    )
 }
 
 async fn post_json(
@@ -86,7 +94,7 @@ async fn post_json(
         .method(Method::POST)
         .uri(path)
         .header(header::CONTENT_TYPE, "application/json")
-        .header(header::AUTHORIZATION, format!("Bearer {}", key))
+        .header(header::AUTHORIZATION, format!("Bearer {key}"))
         .body(Body::from(body_bytes))
         .unwrap();
     let resp = router.clone().oneshot(req).await.unwrap();
@@ -102,7 +110,7 @@ async fn get_json(router: &axum::Router, path: &str, key: &str) -> (StatusCode, 
     let req = Request::builder()
         .method(Method::GET)
         .uri(path)
-        .header(header::AUTHORIZATION, format!("Bearer {}", key))
+        .header(header::AUTHORIZATION, format!("Bearer {key}"))
         .body(Body::empty())
         .unwrap();
     let resp = router.clone().oneshot(req).await.unwrap();
@@ -141,7 +149,7 @@ async fn push_to_view(pool: PgPool) {
     // Step 2: Transition to running.
     let (status, body) = post_json(
         &router,
-        &format!("/v1/runs/{}/status", run_id),
+        &format!("/v1/runs/{run_id}/status"),
         &api_key,
         json!({ "status": "running" }),
     )
@@ -217,7 +225,7 @@ async fn push_to_view(pool: PgPool) {
 
     let (status, body) = post_json(
         &router,
-        &format!("/v1/runs/{}/events", run_id),
+        &format!("/v1/runs/{run_id}/events"),
         &api_key,
         events,
     )
@@ -229,7 +237,7 @@ async fn push_to_view(pool: PgPool) {
     let idempotency_event_id = Uuid::new_v4();
     let (status, body) = post_json(
         &router,
-        &format!("/v1/runs/{}/events", run_id),
+        &format!("/v1/runs/{run_id}/events"),
         &api_key,
         json!({
             "events": [{
@@ -247,7 +255,7 @@ async fn push_to_view(pool: PgPool) {
 
     let (status, body) = post_json(
         &router,
-        &format!("/v1/runs/{}/events", run_id),
+        &format!("/v1/runs/{run_id}/events"),
         &api_key,
         json!({
             "events": [{
@@ -260,13 +268,20 @@ async fn push_to_view(pool: PgPool) {
         }),
     )
     .await;
-    assert_eq!(status, StatusCode::OK, "duplicate event_id should be accepted silently: {body}");
-    assert_eq!(body["accepted"], 0, "duplicate event_id should not be counted");
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "duplicate event_id should be accepted silently: {body}"
+    );
+    assert_eq!(
+        body["accepted"], 0,
+        "duplicate event_id should not be counted"
+    );
 
     // Step 4: Finalize with outcome and cost.
     let (status, body) = post_json(
         &router,
-        &format!("/v1/runs/{}/status", run_id),
+        &format!("/v1/runs/{run_id}/status"),
         &api_key,
         json!({
             "status": "completed",
@@ -280,7 +295,7 @@ async fn push_to_view(pool: PgPool) {
     assert_eq!(body["ok"], true);
 
     // Step 5: Read the run back and verify.
-    let (status, run) = get_json(&router, &format!("/v1/runs/{}", run_id), &api_key).await;
+    let (status, run) = get_json(&router, &format!("/v1/runs/{run_id}"), &api_key).await;
     assert_eq!(status, StatusCode::OK, "get run: {run}");
     assert_eq!(run["id"].as_str().unwrap(), run_id);
     assert_eq!(run["status"], "completed");
@@ -296,20 +311,24 @@ async fn push_to_view(pool: PgPool) {
     assert_eq!(run["metadata"]["seed"], 42);
 
     // Step 6: Fetch events and verify all 21 are present in order.
-    let (status, events) = get_json(
-        &router,
-        &format!("/v1/runs/{}/events", run_id),
-        &api_key,
-    )
-    .await;
+    let (status, events) =
+        get_json(&router, &format!("/v1/runs/{run_id}/events"), &api_key).await;
     assert_eq!(status, StatusCode::OK, "get events: {events}");
     let events = events.as_array().expect("events should be an array");
-    assert_eq!(events.len(), 21, "should have 21 events (20 + 1 non-duplicate)");
+    assert_eq!(
+        events.len(),
+        21,
+        "should have 21 events (20 + 1 non-duplicate)"
+    );
 
     // Verify ascending sequence order
     for (i, event) in events.iter().enumerate() {
         let seq = event["sequence_number"].as_i64().unwrap();
-        assert_eq!(seq, (i + 1) as i64, "events should be in ascending sequence order");
+        assert_eq!(
+            seq,
+            (i + 1) as i64,
+            "events should be in ascending sequence order"
+        );
     }
 
     // Verify event kinds are present
@@ -326,7 +345,7 @@ async fn push_to_view(pool: PgPool) {
     // Step 7: Verify the since cursor works for live polling.
     let (status, partial) = get_json(
         &router,
-        &format!("/v1/runs/{}/events?since=10", run_id),
+        &format!("/v1/runs/{run_id}/events?since=10"),
         &api_key,
     )
     .await;
@@ -336,12 +355,8 @@ async fn push_to_view(pool: PgPool) {
     assert_eq!(partial[0]["sequence_number"], 11);
 
     // Step 8: Verify the run appears in the project's run list.
-    let (status, list) = get_json(
-        &router,
-        "/v1/projects/testuser/testproject/runs",
-        &api_key,
-    )
-    .await;
+    let (status, list) =
+        get_json(&router, "/v1/projects/testuser/testproject/runs", &api_key).await;
     assert_eq!(status, StatusCode::OK, "list runs: {list}");
     let runs = list["runs"].as_array().unwrap();
     assert!(!runs.is_empty(), "project should have at least one run");
@@ -351,7 +366,7 @@ async fn push_to_view(pool: PgPool) {
 
     eprintln!();
     eprintln!("Push-to-view smoke test passed.");
-    eprintln!("  Run ID:   {}", run_id);
+    eprintln!("  Run ID:   {run_id}");
     eprintln!("  Status:   completed");
     eprintln!("  Events:   21 accepted, idempotency verified");
     eprintln!("  Outcome:  correctness=0.92, efficiency=0.78");

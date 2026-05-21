@@ -38,11 +38,8 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres
-
       - name: Run migrations
-        run: sqlx migrate run --source ops/migrations
+        run: psql postgres://stage:stage@localhost:5432/stage_test -f ops/migrations/001_initial_schema.sql
 
       - name: cargo fmt
         run: cargo fmt --all -- --check
@@ -61,3 +58,23 @@ jobs:
         run: |
           uv sync --dev
           uv run pytest
+
+  deploy:
+    name: Deploy to Fly
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --config ops/fly.toml --remote-only
