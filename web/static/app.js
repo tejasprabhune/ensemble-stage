@@ -54,7 +54,8 @@
 
   document.addEventListener('keydown', e => {
     const tag = document.activeElement ? document.activeElement.tagName : '';
-    const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    const inputType = (document.activeElement && document.activeElement.type) || '';
+    const inInput = (tag === 'INPUT' && inputType !== 'checkbox') || tag === 'TEXTAREA' || tag === 'SELECT';
 
     if (e.key === '?') {
       e.preventDefault();

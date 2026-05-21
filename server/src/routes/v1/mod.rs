@@ -35,7 +35,7 @@ pub fn router() -> Router<AppState> {
             get(projects::list_training_runs).post(projects::create_training_run),
         )
         // run endpoints
-        .route("/runs/:run_id", get(runs::get_run))
+        .route("/runs/:run_id", get(runs::get_run).delete(runs::delete_run))
         .route(
             "/runs/:run_id/events",
             get(events::list_events).post(events::append_events),

@@ -7,8 +7,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
+use axum::http::StatusCode;
+
 use crate::{
-    auth::{ApiKeyAuth, MaybeApiKey, MaybeUser},
+    auth::{ApiKeyAuth, MaybeApiKey, MaybeUser, RequireUser},
     AppError, AppState,
 };
 
@@ -176,4 +178,38 @@ pub async fn update_status(
     }
 
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+pub async fn delete_run(
+    State(state): State<AppState>,
+    RequireUser(user): RequireUser,
+    Path(run_id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    let (project_id,): (i64,) = sqlx::query_as("SELECT project_id FROM runs WHERE id = $1")
+        .bind(run_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or(AppError::NotFound)?;
+
+    let is_member: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM org_members om JOIN projects p ON p.org_id = om.org_id WHERE p.id = $1 AND om.user_id = $2)",
+    )
+    .bind(project_id)
+    .bind(user.user_id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if !is_member {
+        return Err(AppError::Forbidden);
+    }
+
+    sqlx::query("DELETE FROM runs WHERE id = $1")
+        .bind(run_id)
+        .execute(&state.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

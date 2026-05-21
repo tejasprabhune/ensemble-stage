@@ -30,6 +30,7 @@ runs
   <div class="run-header" id="runHeader">
     <span class="run-header-id" id="metaId">{{ run_id }}</span>
     <button class="run-copy-btn" onclick="navigator.clipboard.writeText('{{ run_id }}')">copy</button>
+    <button class="run-delete-btn" id="deleteRunBtn" title="Delete run">delete</button>
     <span class="run-header-sep">|</span>
     <span class="run-header-label">Status</span>
     <span id="metaStatus">
@@ -198,6 +199,19 @@ runs
 
     if (['queued', 'running'].includes(currentStatus)) {
       pollTimer = setTimeout(poll, 2000);
+    }
+
+    const deleteBtn = document.getElementById('deleteRunBtn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm('Delete this run? This cannot be undone.')) return;
+        const r = await fetch('/v1/runs/' + runId, { method: 'DELETE' });
+        if (r.ok || r.status === 204) {
+          history.back();
+        } else {
+          alert('Delete failed: ' + r.status);
+        }
+      });
     }
   })();
 

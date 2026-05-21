@@ -535,6 +535,22 @@
   color: var(--color-fg);
 }
 
+.run-delete-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  margin-left: var(--space-1);
+}
+
+.run-delete-btn:hover {
+  border-color: #bf6d6d;
+  color: #bf6d6d;
+}
+
 .run-main-area {
   overflow: hidden;
   display: flex;
@@ -869,14 +885,13 @@ table.diff th {
 /* Account page */
 
 .account-page {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: var(--space-7) var(--space-6) var(--space-8);
+  max-width: 600px;
+  padding: var(--space-5) var(--space-5) var(--space-8);
 }
 
 .account-section {
-  margin-top: var(--space-7);
-  padding-top: var(--space-5);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
 
@@ -885,11 +900,17 @@ table.diff th {
   border-top: none;
 }
 
+.account-section h2 {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-fg-muted);
+  margin: 0 0 var(--space-3) 0;
+}
+
 .create-key-form {
-  display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-  align-items: stretch;
+  margin-top: var(--space-3);
 }
 
 .create-key-form input[type=text] {
@@ -1323,7 +1344,6 @@ textarea.form-input {
 .create-key-fields {
   display: flex;
   gap: var(--space-2);
-  flex-wrap: wrap;
   align-items: center;
 }
 
@@ -1339,9 +1359,10 @@ textarea.form-input {
   font-size: var(--text-sm);
 }
 
-.create-key-fields input[type=text] { min-width: 200px; flex: 1; }
-.create-key-fields select { width: 100px; }
-.create-key-fields input[type=date] { width: 140px; }
+.create-key-fields input[type=text] { flex: 1; min-width: 0; }
+.create-key-fields select { width: 90px; flex-shrink: 0; }
+.create-key-fields input[type=date] { width: 130px; flex-shrink: 0; }
+.create-key-fields button { flex-shrink: 0; }
 
 .create-key-fields input:focus,
 .create-key-fields select:focus {
@@ -1793,16 +1814,16 @@ textarea.form-input {
 
 .settings-layout {
   padding: var(--space-4) var(--space-5);
-  max-width: 640px;
+  max-width: 600px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-5);
 }
 
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .settings-heading {
