@@ -878,6 +878,11 @@ table.diff th {
 
 .create-key-form button:hover { opacity: 0.88; }
 
+.create-key-hint {
+  font-size: 13px;
+  margin-top: 10px;
+}
+
 /* Stub pages */
 
 .stub-page {

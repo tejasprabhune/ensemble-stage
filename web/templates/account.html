@@ -9,29 +9,41 @@
   <section class="account-section">
     <h2>API keys</h2>
     <p>
-      API keys authorize the ensemble integration to push run data to Stage.
-      A key with <code>push</code> scope can create runs and append events.
-      A key with <code>admin</code> scope can additionally manage projects.
+      API keys let the ensemble integration push run data to Stage without a browser session.
+      A key with <code>push</code> scope can create runs, append events, and update run status.
+      A key with <code>admin</code> scope can additionally manage projects and list keys via the API.
+      The raw key value is shown only once at creation time.
     </p>
 
     <div id="api-keys-list"
       hx-get="/v1/me/api_keys"
       hx-trigger="load"
-      hx-swap="innerHTML">
-      <p class="muted">Loading…</p>
+      hx-swap="outerHTML">
+      <p class="muted">Loading keys…</p>
     </div>
 
-    <form class="create-key-form"
+    <form
+      class="create-key-form"
       hx-post="/v1/me/api_keys"
       hx-target="#api-keys-list"
-      hx-swap="innerHTML">
-      <input type="text" name="name" placeholder="Key name (e.g. workstation)" required>
+      hx-swap="outerHTML"
+      hx-on::after-request="this.reset()">
+      <input
+        type="text"
+        name="name"
+        placeholder="Key name (e.g. laptop, CI)"
+        required
+        maxlength="80"
+        autocomplete="off">
       <select name="scope">
         <option value="push">push</option>
         <option value="admin">admin</option>
       </select>
       <button type="submit">Create key</button>
     </form>
+    <p class="create-key-hint muted">
+      Set <code>STAGE_API_KEY</code> in your ensemble project to use the key.
+    </p>
   </section>
 
 </main>
