@@ -103,7 +103,7 @@ runs
       <div class="sidebar-section">
         <div class="sidebar-section-header">Outcome</div>
         <div class="sidebar-section-body">
-          <pre class="outcome-pre {% if outcome_json == "null" %}muted{% endif %}" id="metaOutcome">{{ outcome_display|safe }}</pre>
+          <pre class="outcome-pre {% if outcome_json == "null" %}muted{% endif %}" id="metaOutcome">{{ outcome_display }}</pre>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ runs
       <div class="sidebar-section">
         <div class="sidebar-section-header">Metadata</div>
         <div class="sidebar-section-body">
-          <pre class="outcome-pre {% if metadata_json == "null" %}muted{% endif %}" id="metaMetadata">{{ metadata_display|safe }}</pre>
+          <pre class="outcome-pre {% if metadata_json == "null" %}muted{% endif %}" id="metaMetadata">{{ metadata_display }}</pre>
         </div>
       </div>
     </aside>

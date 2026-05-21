@@ -39,8 +39,8 @@ impl IntoResponse for AppError {
                 tracing::error!("database error: {}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    "database_error",
-                    "database error".to_string(),
+                    "internal_error",
+                    "internal server error".to_string(),
                 )
             }
             AppError::NotFound => (StatusCode::NOT_FOUND, "not_found", "not found".to_string()),
