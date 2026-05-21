@@ -19,7 +19,7 @@ axum-extra = { version = "0.9", features = ["cookie", "typed-header"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["fs", "trace", "compression-gzip"] }
 
-askama = "0.12"
+askama = { version = "0.12", features = ["serde-json"] }
 askama_axum = "0.4"
 
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
