@@ -141,7 +141,7 @@ pub fn hash_api_key(raw: &str) -> String {
     let result = hasher.finalize();
     let mut s = String::new();
     for byte in result {
-        write!(s, "{:02x}", byte).unwrap();
+        write!(s, "{byte:02x}").unwrap();
     }
     s
 }

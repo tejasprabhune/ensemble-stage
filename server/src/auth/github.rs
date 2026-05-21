@@ -59,10 +59,10 @@ pub async fn callback(
         }))
         .send()
         .await
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("token exchange: {}", e)))?
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("token exchange: {e}")))?
         .json()
         .await
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("token parse: {}", e)))?;
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("token parse: {e}")))?;
 
     let github_user: GithubUser = http
         .get("https://api.github.com/user")
@@ -70,10 +70,10 @@ pub async fn callback(
         .header("User-Agent", "ensemble-stage/1.0")
         .send()
         .await
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("user fetch: {}", e)))?
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("user fetch: {e}")))?
         .json()
         .await
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("user parse: {}", e)))?;
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("user parse: {e}")))?;
 
     let user_id = upsert_user(&state, &github_user).await?;
 
@@ -88,7 +88,7 @@ pub async fn callback(
         &claims,
         &EncodingKey::from_secret(state.config.jwt_secret.as_bytes()),
     )
-    .map_err(|e| AppError::Internal(anyhow::anyhow!("jwt encode: {}", e)))?;
+    .map_err(|e| AppError::Internal(anyhow::anyhow!("jwt encode: {e}")))?;
 
     let mut cookie = Cookie::new("stage_session", token);
     cookie.set_http_only(true);

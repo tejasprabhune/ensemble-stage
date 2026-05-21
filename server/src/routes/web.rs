@@ -65,7 +65,7 @@ struct AccountTemplate {
 fn render<T: Template>(t: T) -> Result<Html<String>, AppError> {
     t.render()
         .map(Html)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("template: {}", e)))
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("template: {e}")))
 }
 
 async fn landing(maybe_user: MaybeUser) -> Result<Html<String>, AppError> {
