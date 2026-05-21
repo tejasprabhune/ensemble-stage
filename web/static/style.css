@@ -11,8 +11,8 @@
 
 .wordmark {
   font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 600;
+  font-style: normal;
+  font-weight: 400;
   font-size: var(--text-md);
   color: var(--color-fg);
   text-decoration: none;
