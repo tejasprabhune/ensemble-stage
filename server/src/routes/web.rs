@@ -182,6 +182,7 @@ struct SweepTemplate {
     started_at: String,
     ended_at: String,
     config_summary: String,
+    config_json: String,
 }
 
 #[derive(Template)]
@@ -710,6 +711,12 @@ async fn sweep(
     .ok_or(AppError::NotFound)?;
 
     let config_summary = summarize_sweep_config(&row.4);
+    let config_json = serde_json::to_string(&row.4).unwrap_or_else(|_| "{}".into());
+
+    fn fmt_ts_empty(ts: Option<DateTime<Utc>>) -> String {
+        ts.map(|t| t.format("%b %d %H:%M").to_string())
+            .unwrap_or_default()
+    }
 
     render(SweepTemplate {
         sweep_id_short: sweep_id[..8.min(sweep_id.len())].to_string(),
@@ -718,10 +725,11 @@ async fn sweep(
         project_slug,
         user: UserCtx::from(&maybe_user),
         status: row.0,
-        started_at: format_ts(row.1),
-        ended_at: format_ts(row.2),
+        started_at: fmt_ts_empty(row.1),
+        ended_at: fmt_ts_empty(row.2),
         created_at: row.3.format("%b %d %Y %H:%M").to_string(),
         config_summary,
+        config_json,
     })
 }
 

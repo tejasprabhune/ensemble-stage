@@ -34,10 +34,10 @@ sweeps
     </div>
     <div class="entity-header-meta">
       <span class="meta-pair"><span class="meta-label">Created</span> <span class="meta-value">{{ created_at }}</span></span>
-      {% if started_at != "—" %}
+      {% if started_at != "" %}
       <span class="meta-pair"><span class="meta-label">Started</span> <span class="meta-value">{{ started_at }}</span></span>
       {% endif %}
-      {% if ended_at != "—" %}
+      {% if ended_at != "" %}
       <span class="meta-pair"><span class="meta-label">Ended</span> <span class="meta-value">{{ ended_at }}</span></span>
       {% endif %}
       {% if config_summary != "" %}
@@ -46,19 +46,78 @@ sweeps
     </div>
   </div>
 
-  <div class="sweep-kpi-strip" id="sweepKpi">
-    <div class="kpi-cell"><span class="kpi-value" id="kpiTotal">—</span><span class="kpi-label">runs</span></div>
-    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiCompleted">—</span><span class="kpi-label">completed</span></div>
-    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiFailed">—</span><span class="kpi-label">failed</span></div>
-    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiRunning">—</span><span class="kpi-label">running</span></div>
-    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiCost">—</span><span class="kpi-label">total cost</span></div>
-    <div class="kpi-cell kpi-sep"><span class="kpi-value" id="kpiScore">—</span><span class="kpi-label">mean score</span></div>
+  <div class="sweep-actions">
+    <button class="btn-sm" id="btnShare">Share</button>
+    <button class="btn-sm" id="btnCompare">Compare two runs</button>
+    {% if status == "running" %}
+    <button class="btn-sm btn-danger" id="btnCancel">Cancel sweep</button>
+    {% endif %}
   </div>
 
-  <div id="sweepMatrix" class="sweep-matrix-wrap muted">Loading runs…</div>
+  <div class="sweep-kpi-strip" id="sweepKpi">
+    <div class="kpi-cell">
+      <span class="kpi-label">Total runs</span>
+      <span class="kpi-value mono" id="kpiTotal">--</span>
+    </div>
+    <div class="kpi-cell kpi-sep">
+      <span class="kpi-label">Completed</span>
+      <span class="kpi-value mono" id="kpiCompleted">--</span>
+      <span class="kpi-sub" id="kpiCompletedPct"></span>
+    </div>
+    <div class="kpi-cell kpi-sep">
+      <span class="kpi-label">Failed</span>
+      <span class="kpi-value mono" id="kpiFailed">--</span>
+      <span class="kpi-sub" id="kpiFailedPct"></span>
+    </div>
+    <div class="kpi-cell kpi-sep">
+      <span class="kpi-label">Running</span>
+      <span class="kpi-value mono" id="kpiRunning">--</span>
+      <span class="kpi-sub" id="kpiRunningPct"></span>
+    </div>
+    <div class="kpi-cell kpi-sep">
+      <span class="kpi-label">Total cost</span>
+      <span class="kpi-value mono" id="kpiCost">--</span>
+    </div>
+    <div class="kpi-cell kpi-sep">
+      <span class="kpi-label">Mean outcome</span>
+      <span class="kpi-value mono" id="kpiScore">--</span>
+      <span class="kpi-sub" id="kpiScoreSe"></span>
+    </div>
+  </div>
+
+  <div class="sweep-section">
+    <div class="matrix-controls" id="matrixControls">
+      <div class="matrix-axis-group">
+        <span>Rows</span>
+        <select class="matrix-axis-select" id="rowAxisSelect"></select>
+      </div>
+      <div class="matrix-axis-group">
+        <span>Cols</span>
+        <select class="matrix-axis-select" id="colAxisSelect"></select>
+      </div>
+      <label class="matrix-variance-label">
+        <input type="checkbox" id="varianceToggle" checked>
+        Show variance
+      </label>
+      <div class="matrix-agg-chips" id="aggChips"></div>
+    </div>
+    <div id="sweepMatrix" class="sweep-matrix-wrap muted">Loading runs...</div>
+  </div>
+
+  <div class="sweep-layout-cols">
+    <div class="sweep-section">
+      <div class="sweep-section-heading">Cost over time</div>
+      <div id="costChartWrap"></div>
+    </div>
+    <div class="sweep-section sweep-section-aside">
+      <div class="sweep-section-heading">Per-axis breakdown</div>
+      <div id="axisBreakdown"></div>
+    </div>
+  </div>
 
   <div id="sweepRunsTable" class="sweep-runs-wrap" hidden>
     <h3 class="sweep-runs-heading">All runs</h3>
+    <div id="sweepFilterBar" class="sweep-filter-bar" hidden></div>
     <table class="runs-table">
       <thead>
         <tr>
@@ -78,116 +137,477 @@ sweeps
 
 </div>
 
+<div class="matrix-tt" id="matrixTt"></div>
+
+<div class="compare-picker" id="comparePicker">
+  <div class="cp-overlay" id="cpOverlay"></div>
+  <div class="cp-box">
+    <div class="cp-heading">Compare two runs</div>
+    <div class="cp-row">
+      <label>Run A</label>
+      <select id="cpRunA"></select>
+    </div>
+    <div class="cp-row">
+      <label>Run B</label>
+      <select id="cpRunB"></select>
+    </div>
+    <div class="cp-actions">
+      <button class="btn-sm" id="cpCancel">Cancel</button>
+      <button class="btn-sm" id="cpGo">Open comparison</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   const sweepId = {{ sweep_id|json|safe }};
+  const sweepStatus = {{ status|json|safe }};
   const orgSlug = {{ org_slug|json|safe }};
   const projectSlug = {{ project_slug|json|safe }};
+  const sweepConfig = {{ config_json|safe }};
+
+  let runs = [];
+  let showVariance = true;
+  let rowAxis = null, colAxis = null;
+  let filterAxis = null, filterVal = null;
+  let pollTimer = null;
+  const tt = document.getElementById('matrixTt');
+
+  function primaryScore(outcome) {
+    if (!outcome || typeof outcome !== 'object') return null;
+    const vals = Object.values(outcome).filter(v => typeof v === 'number');
+    return vals.length ? vals[0] : null;
+  }
+
+  function mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null; }
+
+  function stddev(arr) {
+    if (arr.length < 2) return null;
+    const m = mean(arr);
+    return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1));
+  }
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function fmtCost(r) {
+    const usd = r.total_cost?.usd;
+    return usd != null ? '$' + usd.toFixed(4) : 'none';
+  }
+
+  function fmtDur(ms) {
+    if (ms == null) return 'none';
+    return ms < 60000 ? (ms / 1000).toFixed(1) + 's' : Math.floor(ms / 60000) + 'm ' + ((ms % 60000) / 1000).toFixed(0) + 's';
+  }
+
+  function detectAxes() {
+    const candidates = ['backend', 'scenario', 'world', 'model', 'persona', 'seed'];
+    const cfgMap = { backends: 'backend', scenarios: 'scenario', worlds: 'world', seeds: 'seed', personas: 'persona', models: 'model' };
+    const fromConfig = Object.entries(cfgMap)
+      .filter(([k]) => Array.isArray(sweepConfig[k]) && sweepConfig[k].length > 1)
+      .map(([, v]) => v);
+    const fromRuns = candidates.filter(k => new Set(runs.map(r => r[k]).filter(v => v != null)).size > 1);
+    const axes = [...new Set([...fromRuns, ...fromConfig])];
+    return axes.length > 0 ? axes : candidates.slice(0, 2);
+  }
+
+  function updateAxisDropdowns(axes) {
+    function fill(sel, current) {
+      const prev = sel.value || current;
+      sel.innerHTML = axes.map(a => `<option value="${esc(a)}"${a === prev ? ' selected' : ''}>${esc(a)}</option>`).join('');
+      return sel.value;
+    }
+    rowAxis = fill(document.getElementById('rowAxisSelect'), rowAxis || axes[0]);
+    colAxis = fill(document.getElementById('colAxisSelect'), colAxis || axes[1] || axes[0]);
+    const others = axes.filter(a => a !== rowAxis && a !== colAxis);
+    const chips = document.getElementById('aggChips');
+    chips.innerHTML = others.length
+      ? others.map(a => `<span class="matrix-agg-chip">${esc(a)}: all</span>`).join('')
+      : '<span class="matrix-agg-chip">All axes in matrix</span>';
+  }
 
   async function load() {
-    const r = await fetch(`/v1/sweeps/${sweepId}/runs`);
-    if (!r.ok) {
+    const [swR, runsR] = await Promise.all([
+      fetch(`/v1/sweeps/${sweepId}`),
+      fetch(`/v1/sweeps/${sweepId}/runs`),
+    ]);
+    if (!runsR.ok) {
       document.getElementById('sweepMatrix').textContent = 'Could not load runs.';
       return;
     }
-    const { runs } = await r.json();
+    const { runs: data } = await runsR.json();
+    runs = data;
 
-    // KPI strip
-    const completed = runs.filter(r => r.status === 'completed');
-    const failed = runs.filter(r => r.status === 'failed');
+    if (swR.ok) {
+      const sw = await swR.json();
+      if (['completed', 'failed', 'cancelled'].includes(sw.status)) stopPolling();
+    }
+
+    const axes = detectAxes();
+    if (!rowAxis) rowAxis = axes[0] || 'backend';
+    if (!colAxis) colAxis = axes[1] || axes[0] || 'scenario';
+    updateAxisDropdowns(axes);
+
+    renderKpi();
+    renderMatrix();
+    renderCostChart();
+    renderAxisBreakdown(axes);
+    renderRunsList();
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(load, 2000);
+  }
+
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  function renderKpi() {
+    const total = runs.length;
+    const comp = runs.filter(r => r.status === 'completed');
+    const fail = runs.filter(r => r.status === 'failed');
     const running = runs.filter(r => r.status === 'running' || r.status === 'queued');
-    const totalCost = completed.reduce((s, r) => s + (r.total_cost?.usd ?? 0), 0);
-    const scores = completed
-      .map(r => Object.values(r.outcome ?? {})[0])
-      .filter(v => typeof v === 'number');
-    const meanScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+    const totalCost = comp.reduce((s, r) => s + (r.total_cost?.usd ?? 0), 0);
+    const scores = comp.map(r => primaryScore(r.outcome)).filter(v => typeof v === 'number');
+    const m = mean(scores);
+    const se = scores.length > 1 ? stddev(scores) / Math.sqrt(scores.length) : null;
+    const pct = n => total > 0 ? Math.round(n / total * 100) + '%' : '';
 
-    document.getElementById('kpiTotal').textContent = runs.length;
-    document.getElementById('kpiCompleted').textContent = completed.length;
-    document.getElementById('kpiFailed').textContent = failed.length;
+    document.getElementById('kpiTotal').textContent = total;
+    document.getElementById('kpiCompleted').textContent = comp.length;
+    document.getElementById('kpiCompletedPct').textContent = pct(comp.length);
+
+    const failEl = document.getElementById('kpiFailed');
+    failEl.textContent = fail.length;
+    failEl.className = 'kpi-value mono' + (fail.length > 0 ? ' kpi-error' : '');
+    document.getElementById('kpiFailedPct').textContent = pct(fail.length);
+
     document.getElementById('kpiRunning').textContent = running.length;
-    document.getElementById('kpiCost').textContent = totalCost > 0 ? `$${totalCost.toFixed(4)}` : '—';
-    document.getElementById('kpiScore').textContent = meanScore != null ? meanScore.toFixed(3) : '—';
-
-    // Matrix: pick axes from the variation across runs
-    const axes = inferAxes(runs);
-    renderMatrix(runs, axes);
-
-    // Flat runs table
-    renderRunsTable(runs);
-    document.getElementById('sweepRunsTable').hidden = false;
+    document.getElementById('kpiRunningPct').textContent = pct(running.length);
+    document.getElementById('kpiCost').textContent = totalCost > 0 ? '$' + totalCost.toFixed(4) : 'none';
+    document.getElementById('kpiScore').textContent = m != null ? m.toFixed(3) : 'none';
+    document.getElementById('kpiScoreSe').textContent = se != null ? '+/-' + se.toFixed(3) : '';
   }
 
-  function inferAxes(runs) {
-    const candidates = ['backend', 'scenario', 'world'];
-    const varied = candidates.filter(k => {
-      const vals = new Set(runs.map(r => r[k]));
-      return vals.size > 1;
-    });
-    if (varied.length >= 2) return [varied[0], varied[1]];
-    if (varied.length === 1) return [varied[0], 'scenario'];
-    return ['backend', 'scenario'];
+  function cellBgStyle(cellRuns) {
+    if (!cellRuns.length) return '';
+    const ok = cellRuns.filter(r => r.status === 'completed').length;
+    const rate = ok / cellRuns.length;
+    const hue = Math.round(rate * 120);
+    return `background: hsla(${hue}, 35%, 15%, 0.35);`;
   }
 
-  function renderMatrix(runs, [rowAxis, colAxis]) {
-    const rowVals = [...new Set(runs.map(r => r[rowAxis]))].sort();
-    const colVals = [...new Set(runs.map(r => r[colAxis]))].sort();
+  function boxPlotSvg(scores) {
+    if (scores.length < 2) return '';
+    const sorted = [...scores].sort((a, b) => a - b);
+    const n = sorted.length;
+    const q1 = sorted[Math.floor(n * 0.25)];
+    const q2 = sorted[Math.floor(n * 0.5)];
+    const q3 = sorted[Math.floor(n * 0.75)];
+    const mn = sorted[0], mx = sorted[n - 1];
+    const W = 60, H = 12, pad = 4;
+    const iW = W - pad * 2;
+    const range = mx - mn || 0.001;
+    const sx = v => (pad + ((v - mn) / range) * iW).toFixed(1);
+    const mid = (H / 2).toFixed(1);
+    const cap1 = '3', cap2 = (H - 3).toFixed(1);
+    return `<svg width="${W}" height="${H}" class="box-plot">` +
+      `<line x1="${sx(mn)}" y1="${mid}" x2="${sx(mx)}" y2="${mid}" stroke="currentColor" stroke-width="1"/>` +
+      `<line x1="${sx(mn)}" y1="${cap1}" x2="${sx(mn)}" y2="${cap2}" stroke="currentColor" stroke-width="1"/>` +
+      `<line x1="${sx(mx)}" y1="${cap1}" x2="${sx(mx)}" y2="${cap2}" stroke="currentColor" stroke-width="1"/>` +
+      `<rect x="${sx(q1)}" y="3" width="${(parseFloat(sx(q3)) - parseFloat(sx(q1))).toFixed(1)}" height="${H - 6}" stroke="currentColor" fill="none" stroke-width="1"/>` +
+      `<line x1="${sx(q2)}" y1="3" x2="${sx(q2)}" y2="${(H - 3).toFixed(1)}" stroke="currentColor" stroke-width="1.5"/>` +
+      `</svg>`;
+  }
 
-    let html = `<div class="matrix-axis-label">rows: ${rowAxis} &nbsp;&nbsp; cols: ${colAxis}</div>`;
-    html += '<table class="sweep-matrix">';
-    html += '<thead><tr><th></th>' + colVals.map(v => `<th class="matrix-col-hdr">${escHtml(v)}</th>`).join('') + '</tr></thead>';
-    html += '<tbody>';
-    for (const rv of rowVals) {
-      html += `<tr><th class="matrix-row-hdr">${escHtml(rv)}</th>`;
-      for (const cv of colVals) {
-        const cell = runs.filter(r => r[rowAxis] === rv && r[colAxis] === cv);
-        html += renderCell(cell);
+  function renderCell(cellRuns, rowVal, colVal) {
+    if (!cellRuns.length) return `<td class="matrix-cell matrix-cell-empty"></td>`;
+    const scores = cellRuns.map(r => primaryScore(r.outcome)).filter(v => typeof v === 'number');
+    const m = mean(scores);
+    const shown = cellRuns.slice(0, 6);
+    const overflow = cellRuns.length - shown.length;
+    const squares = shown.map(r => {
+      const cls = r.status === 'completed' ? 'sq-ok' : r.status === 'failed' ? 'sq-fail' : (r.status === 'running' || r.status === 'queued') ? 'sq-run' : 'sq-pend';
+      return `<span class="sq ${cls}"></span>`;
+    }).join('') + (overflow > 0 ? `<span class="sq-overflow">+${overflow}</span>` : '');
+
+    const scoreHtml = m != null ? `<span class="cell-score">${m.toFixed(3)}</span>` : '';
+    const plot = showVariance && scores.length >= 2 ? boxPlotSvg(scores) : '';
+    const bg = cellBgStyle(cellRuns);
+
+    const inner = `<div class="matrix-cell-inner" style="${bg}" data-rv="${esc(rowVal)}" data-cv="${esc(colVal)}">` +
+      `<div class="status-squares">${squares}</div>` +
+      scoreHtml + plot + `</div>`;
+
+    if (cellRuns.length === 1) {
+      return `<td class="matrix-cell"><a href="/${orgSlug}/${projectSlug}/runs/${cellRuns[0].id}" style="display:block;text-decoration:none;">${inner}</a></td>`;
+    }
+    return `<td class="matrix-cell">${inner}</td>`;
+  }
+
+  function renderMatrix() {
+    const rVals = [...new Set(runs.map(r => r[rowAxis]).filter(v => v != null))].sort();
+    const cVals = [...new Set(runs.map(r => r[colAxis]).filter(v => v != null))].sort();
+    const wrap = document.getElementById('sweepMatrix');
+
+    if (!runs.length) {
+      wrap.innerHTML = '<p class="muted" style="padding:var(--space-3) 0">This sweep has no runs yet. Runs will appear as cells complete.</p>';
+      return;
+    }
+
+    if (!rVals.length || !cVals.length) {
+      rVals.push('(all)'); cVals.push('(all)');
+    }
+
+    let html = '<div style="overflow-x:auto;"><table class="sweep-matrix"><thead><tr><th></th>';
+    html += cVals.map(v => `<th class="matrix-col-hdr">${esc(v)}</th>`).join('');
+    html += '</tr></thead><tbody>';
+    for (const rv of rVals) {
+      html += `<tr><th class="matrix-row-hdr">${esc(rv)}</th>`;
+      for (const cv of cVals) {
+        const cell = runs.filter(r => {
+          const rMatch = rv === '(all)' || r[rowAxis] === rv;
+          const cMatch = cv === '(all)' || r[colAxis] === cv;
+          return rMatch && cMatch;
+        });
+        html += renderCell(cell, rv, cv);
       }
       html += '</tr>';
     }
-    html += '</tbody></table>';
-    document.getElementById('sweepMatrix').innerHTML = html;
-  }
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+    wrap.classList.remove('muted');
 
-  function renderCell(runs) {
-    if (!runs.length) return '<td class="matrix-cell matrix-cell-empty"></td>';
-    const allDone = runs.every(r => r.status === 'completed');
-    const allFailed = runs.every(r => r.status === 'failed');
-    const anyRunning = runs.some(r => r.status === 'running' || r.status === 'queued');
-    const cls = allDone ? 'matrix-cell-ok' : allFailed ? 'matrix-cell-fail' : anyRunning ? 'matrix-cell-running' : 'matrix-cell-mixed';
-    const scores = runs.map(r => Object.values(r.outcome ?? {})[0]).filter(v => typeof v === 'number');
-    const score = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2) : '';
-    const href = runs.length === 1 ? `/${orgSlug}/${projectSlug}/runs/${runs[0].id}` : '';
-    const inner = `<span class="matrix-dot ${cls}"></span>${score ? `<span class="matrix-score">${score}</span>` : ''}`;
-    return href
-      ? `<td class="matrix-cell"><a href="${href}">${inner}</a></td>`
-      : `<td class="matrix-cell">${inner}</td>`;
-  }
-
-  function renderRunsTable(runs) {
-    const rows = runs.map(r => {
-      const score = Object.values(r.outcome?.scores ?? {})[0];
-      const cost = r.total_cost?.usd != null ? `$${r.total_cost.usd.toFixed(4)}` : '—';
-      const dur = r.wall_time_ms != null ? `${(r.wall_time_ms/1000).toFixed(1)}s` : '—';
-      return `<tr>
-        <td class="col-id"><a class="mono" href="/${orgSlug}/${projectSlug}/runs/${r.id}">${r.id.slice(0,8)}</a></td>
-        <td>${escHtml(r.scenario)}</td>
-        <td>${escHtml(r.world)}</td>
-        <td>${escHtml(r.backend)}</td>
-        <td><span class="status-badge status-${r.status}">${r.status}</span></td>
-        <td>${score != null ? score.toFixed(3) : '—'}</td>
-        <td class="mono">${cost}</td>
-        <td class="mono">${dur}</td>
-      </tr>`;
+    wrap.querySelectorAll('.matrix-cell-inner').forEach(el => {
+      el.addEventListener('mouseenter', e => showTt(e, el));
+      el.addEventListener('mouseleave', () => hideTt());
+      el.addEventListener('click', () => filterByCell(el.dataset.rv, el.dataset.cv));
     });
-    document.getElementById('sweepRunRows').innerHTML = rows.join('');
   }
 
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  function showTt(e, el) {
+    const rv = el.dataset.rv, cv = el.dataset.cv;
+    const cellRuns = runs.filter(r => {
+      const rMatch = rv === '(all)' || r[rowAxis] === rv;
+      const cMatch = cv === '(all)' || r[colAxis] === cv;
+      return rMatch && cMatch;
+    });
+    let html = `<div style="color:var(--color-fg-muted);margin-bottom:4px">${cellRuns.length} run${cellRuns.length !== 1 ? 's' : ''}</div>`;
+    for (const r of cellRuns.slice(0, 8)) {
+      const sc = primaryScore(r.outcome);
+      html += `<div class="matrix-tt-run">` +
+        `<span>${r.id.slice(0, 8)}</span>` +
+        `<span>${esc(r.status)}</span>` +
+        `<span>${sc != null ? sc.toFixed(3) : 'none'}</span>` +
+        `<span>${fmtCost(r)}</span>` +
+        `</div>`;
+    }
+    if (cellRuns.length > 8) html += `<div class="matrix-tt-hint">+${cellRuns.length - 8} more</div>`;
+    html += `<div class="matrix-tt-hint">${cellRuns.length === 1 ? 'Click to open run' : 'Click to filter runs below'}</div>`;
+    tt.innerHTML = html;
+    tt.classList.add('visible');
+    positionTt(e);
   }
+
+  function positionTt(e) {
+    const W = tt.offsetWidth || 220;
+    const H = tt.offsetHeight || 80;
+    let x = e.clientX + 12, y = e.clientY + 12;
+    if (x + W > window.innerWidth - 8) x = e.clientX - W - 4;
+    if (y + H > window.innerHeight - 8) y = e.clientY - H - 4;
+    tt.style.left = x + 'px';
+    tt.style.top = y + 'px';
+  }
+
+  function hideTt() { tt.classList.remove('visible'); }
+
+  function filterByCell(rv, cv) {
+    if (runs.filter(r => (rv === '(all)' || r[rowAxis] === rv) && (cv === '(all)' || r[colAxis] === cv)).length === 1) return;
+    filterAxis = [rowAxis, colAxis];
+    filterVal = [rv, cv];
+    renderRunsList();
+    document.getElementById('sweepRunsTable').scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
+
+  function renderCostChart() {
+    const wrap = document.getElementById('costChartWrap');
+    const runsWithCost = runs.filter(r => r.total_cost?.usd != null && r.ended_at);
+    if (!runsWithCost.length) {
+      wrap.innerHTML = '<p class="muted cost-chart-empty">No cost data for this sweep. Cost data is recorded when runs complete with cost metadata.</p>';
+      return;
+    }
+
+    const pts = runsWithCost
+      .map(r => ({ t: new Date(r.ended_at).getTime(), cost: r.total_cost.usd, status: r.status }))
+      .sort((a, b) => a.t - b.t);
+
+    let cumCost = 0;
+    const cumulativePts = pts.map(p => { cumCost += p.cost; return { t: p.t, y: cumCost, status: p.status }; });
+
+    const tMin = pts[0].t;
+    const tMax = Math.max(pts[pts.length - 1].t, tMin + 1000);
+    const yMax = cumCost * 1.1 || 1;
+
+    const W = '100%', H = 200;
+    const PAD = { top: 12, right: 16, bottom: 28, left: 64 };
+    const iH = H - PAD.top - PAD.bottom;
+    const iWNum = 640;
+    const px = t => PAD.left + ((t - tMin) / (tMax - tMin)) * (iWNum - PAD.left - PAD.right);
+    const py = y => PAD.top + (1 - y / yMax) * iH;
+
+    const pathD = cumulativePts.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.t).toFixed(1)},${py(p.y).toFixed(1)}`).join(' ');
+
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => f * yMax);
+    const yTickSvg = yTicks.map(v =>
+      `<line x1="${PAD.left}" y1="${py(v).toFixed(1)}" x2="${PAD.left - 4}" y2="${py(v).toFixed(1)}" stroke="var(--color-fg-subtle)" stroke-width="1"/>` +
+      `<text x="${PAD.left - 6}" y="${py(v).toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="var(--color-fg-subtle)" font-size="10">$${v.toFixed(4)}</text>`
+    ).join('');
+
+    const dots = cumulativePts.map(p =>
+      `<circle cx="${px(p.t).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="3" fill="${p.status === 'completed' ? 'var(--color-success)' : 'var(--color-error)'}" />`
+    ).join('');
+
+    wrap.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${iWNum} ${H}" preserveAspectRatio="none" class="cost-chart-svg">` +
+      `<line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${PAD.top + iH}" stroke="var(--color-fg-subtle)" stroke-width="1"/>` +
+      `<line x1="${PAD.left}" y1="${PAD.top + iH}" x2="${iWNum - PAD.right}" y2="${PAD.top + iH}" stroke="var(--color-fg-subtle)" stroke-width="1"/>` +
+      yTickSvg +
+      `<path d="${pathD}" fill="none" stroke="var(--color-accent)" stroke-width="1.5"/>` +
+      dots +
+      `</svg>`;
+  }
+
+  function renderAxisBreakdown(axes) {
+    const wrap = document.getElementById('axisBreakdown');
+    const others = (axes || detectAxes()).filter(a => a !== rowAxis && a !== colAxis);
+    if (!others.length) {
+      wrap.innerHTML = '<p class="muted" style="font-size:var(--text-xs)">All axes are shown in the matrix above.</p>';
+      return;
+    }
+    let html = '<div class="axis-breakdown-grid">';
+    for (const axis of others) {
+      const vals = [...new Set(runs.map(r => r[axis]).filter(v => v != null))].sort();
+      html += `<div class="axis-breakdown-item"><div class="axis-breakdown-heading">${esc(axis)}</div>`;
+      html += `<table class="axis-table"><thead><tr><th>Value</th><th>Runs</th><th>Mean</th><th>Cost</th></tr></thead><tbody>`;
+      for (const val of vals) {
+        const group = runs.filter(r => r[axis] === val);
+        const scores = group.map(r => primaryScore(r.outcome)).filter(v => typeof v === 'number');
+        const m = mean(scores);
+        const cost = group.reduce((s, r) => s + (r.total_cost?.usd ?? 0), 0);
+        html += `<tr data-axis="${esc(axis)}" data-val="${esc(val)}">` +
+          `<td><span class="axis-val-label">${esc(val)}</span></td>` +
+          `<td>${group.length}</td>` +
+          `<td>${m != null ? m.toFixed(3) : 'none'}</td>` +
+          `<td>${cost > 0 ? '$' + cost.toFixed(4) : 'none'}</td>` +
+          `</tr>`;
+      }
+      html += '</tbody></table></div>';
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('.axis-table tr[data-axis]').forEach(row => {
+      row.addEventListener('click', () => {
+        filterAxis = row.dataset.axis;
+        filterVal = row.dataset.val;
+        renderRunsList();
+        document.getElementById('sweepRunsTable').scrollIntoView({ behavior: 'auto', block: 'start' });
+      });
+    });
+  }
+
+  function renderRunsList() {
+    let visible = runs;
+    const filterBar = document.getElementById('sweepFilterBar');
+
+    if (filterAxis && filterVal) {
+      if (Array.isArray(filterAxis)) {
+        visible = runs.filter(r => r[filterAxis[0]] === filterVal[0] && r[filterAxis[1]] === filterVal[1]);
+        filterBar.innerHTML = `Showing ${visible.length} of ${runs.length} runs (${filterAxis[0]}=${filterVal[0]}, ${filterAxis[1]}=${filterVal[1]}) <button onclick="clearFilter()">Clear filter</button>`;
+      } else {
+        visible = runs.filter(r => r[filterAxis] === filterVal);
+        filterBar.innerHTML = `Showing ${visible.length} of ${runs.length} runs (${filterAxis}=${filterVal}) <button onclick="clearFilter()">Clear filter</button>`;
+      }
+      filterBar.hidden = false;
+    } else {
+      filterBar.hidden = true;
+    }
+
+    const rows = visible.map(r => {
+      const sc = primaryScore(r.outcome);
+      return `<tr>` +
+        `<td class="col-id"><a class="mono" href="/${orgSlug}/${projectSlug}/runs/${r.id}">${r.id.slice(0, 8)}</a></td>` +
+        `<td>${esc(r.scenario)}</td>` +
+        `<td>${esc(r.world)}</td>` +
+        `<td>${esc(r.backend)}</td>` +
+        `<td><span class="status-badge status-${r.status}">${r.status}</span></td>` +
+        `<td class="mono">${sc != null ? sc.toFixed(3) : 'none'}</td>` +
+        `<td class="mono">${fmtCost(r)}</td>` +
+        `<td class="mono">${fmtDur(r.wall_time_ms)}</td>` +
+        `</tr>`;
+    });
+    document.getElementById('sweepRunRows').innerHTML = rows.join('') ||
+      '<tr><td colspan="8" class="muted" style="padding:var(--space-3)">No runs match this filter.</td></tr>';
+    document.getElementById('sweepRunsTable').hidden = false;
+  }
+
+  window.clearFilter = function () {
+    filterAxis = null; filterVal = null;
+    renderRunsList();
+  };
+
+  // Actions
+  document.getElementById('btnShare').addEventListener('click', () => {
+    navigator.clipboard.writeText(location.href).then(() => {
+      const btn = document.getElementById('btnShare');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Share'; }, 1800);
+    });
+  });
+
+  document.getElementById('btnCompare').addEventListener('click', () => {
+    const picker = document.getElementById('comparePicker');
+    const runOpts = runs.map(r => `<option value="${r.id}">${r.id.slice(0, 8)} - ${esc(r.scenario)} (${r.status})</option>`).join('');
+    document.getElementById('cpRunA').innerHTML = runOpts;
+    document.getElementById('cpRunB').innerHTML = runOpts;
+    picker.classList.add('open');
+  });
+
+  document.getElementById('cpOverlay').addEventListener('click', () => document.getElementById('comparePicker').classList.remove('open'));
+  document.getElementById('cpCancel').addEventListener('click', () => document.getElementById('comparePicker').classList.remove('open'));
+  document.getElementById('cpGo').addEventListener('click', () => {
+    const a = document.getElementById('cpRunA').value;
+    const b = document.getElementById('cpRunB').value;
+    if (a && b && a !== b) location.href = `/${orgSlug}/${projectSlug}/compare?a=${a}&b=${b}`;
+  });
+
+  const cancelBtn = document.getElementById('btnCancel');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', async () => {
+      if (!confirm('Cancel this sweep? In-flight runs will finish but no new runs will start.')) return;
+      const r = await fetch(`/v1/sweeps/${sweepId}/cancel`, { method: 'POST' });
+      if (r.ok) {
+        cancelBtn.remove();
+        stopPolling();
+        load();
+      } else {
+        alert('Could not cancel sweep.');
+      }
+    });
+  }
+
+  document.getElementById('rowAxisSelect').addEventListener('change', e => { rowAxis = e.target.value; renderMatrix(); renderAxisBreakdown(); });
+  document.getElementById('colAxisSelect').addEventListener('change', e => { colAxis = e.target.value; renderMatrix(); renderAxisBreakdown(); });
+  document.getElementById('varianceToggle').addEventListener('change', e => { showVariance = e.target.checked; renderMatrix(); });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPolling();
+    else if (sweepStatus === 'running') startPolling();
+  });
 
   load();
+  if (sweepStatus === 'running') startPolling();
 })();
 </script>
 {% endblock %}
