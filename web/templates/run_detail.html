@@ -133,8 +133,8 @@ runs
 
 <script>
   (function () {
-    const runId = {{ run_id|json }};
-    let currentStatus = {{ status|json }};
+    const runId = {{ run_id|json|safe }};
+    let currentStatus = {{ status|json|safe }};
 
     function updateStatus(run) {
       if (run.status === currentStatus) return;
@@ -201,7 +201,7 @@ runs
     }
   })();
 
-  window.STAGE_RUN_ID = {{ run_id|json }};
+  window.STAGE_RUN_ID = {{ run_id|json|safe }};
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
 <script src="/static/viewer.js" defer></script>
