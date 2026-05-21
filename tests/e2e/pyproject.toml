@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ensemble-stage-e2e"
+version = "0.1.0"
+description = "End-to-end Playwright tests for ensemble-stage"
+requires-python = ">=3.11"
+dependencies = [
+    "pytest>=8.0",
+    "pytest-playwright>=0.5",
+    "psycopg2-binary>=2.9",
+    "requests>=2.31",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+asyncio_mode = "auto"
+
+[tool.uv]
+dev-dependencies = []

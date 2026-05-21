@@ -120,7 +120,7 @@ compare
     let identicalCount = 0;
 
     const rows = [];
-    for (let i = 1; i <= maxSeq; i++) {
+    for (let i = 0; i <= maxSeq; i++) {
       const a = mapA[i], b = mapB[i];
       const same = a && b && a.kind === b.kind && JSON.stringify(a.payload) === JSON.stringify(b.payload);
       if (same) { identicalCount++; } else if (firstDivergence === null) { firstDivergence = i; }
