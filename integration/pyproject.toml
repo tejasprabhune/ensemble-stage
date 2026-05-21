@@ -6,7 +6,6 @@ build-backend = "hatchling.build"
 name = "ensemble-stage"
 version = "0.1.0"
 description = "ensemble integration for Stage observability"
-readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
@@ -19,6 +18,9 @@ ensemble-stage = "ensemble_stage.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ensemble_stage"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.uv]
 dev-dependencies = [
