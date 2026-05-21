@@ -1,28 +1,23 @@
 # Development guide
 
-This document covers running Stage locally and verifying the full push-to-viewer path with the "first push" smoke test.
+This document covers running Stage locally, verifying the server with the automated test suite, and confirming the full push-to-viewer path manually.
 
 ## Prerequisites
 
-- Rust stable (1.80 or later). Install with `rustup`.
-- PostgreSQL 15 or 16 running locally.
-- `sqlx-cli` for running migrations: `cargo install sqlx-cli --no-default-features --features postgres`
-- `uv` for the Python integration package.
+You need Rust (stable, 1.80 or later; install with `rustup`), PostgreSQL 14 or later running locally, and `uv` if you want to run the Python smoke test. No other build tools are required.
 
 ## Setting up the database
 
-Create a local database and run the migrations:
+Create a local database and apply the schema migration:
 
 ```bash
 createdb stage_dev
-export DATABASE_URL=postgres://localhost/stage_dev
-
-sqlx migrate run --source ops/migrations
+psql stage_dev -f ops/migrations/001_initial_schema.sql
 ```
 
 ## Configuring the server
 
-Copy the example env file and edit it:
+Create a `.env` file in the repository root:
 
 ```bash
 cat > .env <<'EOF'
@@ -35,7 +30,7 @@ JWT_SECRET=dev-jwt-secret-do-not-use-in-production
 EOF
 ```
 
-`GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` can be left empty for local development if you create users and API keys directly in the database (see below). Set them if you want GitHub OAuth to work locally; the callback URL to register in the GitHub OAuth App settings is `http://localhost:3000/auth/github/callback`.
+`GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` can be left empty during development if you bootstrap users and API keys directly in the database (see below). Set them if you want GitHub OAuth to work; the callback URL to register in your GitHub OAuth App is `http://localhost:3000/auth/github/callback`.
 
 ## Running the server
 
@@ -43,124 +38,101 @@ EOF
 cargo run --bin stage-server
 ```
 
-The server listens on `http://localhost:3000`. Template changes do not require a rebuild since askama compiles templates at build time; you need to `cargo build` after changing any template file.
+The server listens on `http://localhost:3000`.
 
-Static assets (`web/static/`) are served from disk on every request; you can edit CSS and JS without rebuilding.
+Askama compiles templates at build time, so changing a template file in `web/templates/` requires `cargo build` to take effect. Static assets under `web/static/` are served from disk on every request and can be edited without rebuilding.
 
-## Creating a test user and project (without GitHub OAuth)
+## Creating a test user and project without OAuth
 
-Insert directly while developing:
+When developing against a local server without a GitHub OAuth App configured, bootstrap the database directly:
 
 ```sql
--- In psql:
-INSERT INTO orgs (slug, name) VALUES ('demo', 'Demo Org') RETURNING id;
--- Note the org id; assume it's 1 below.
+-- Connect with: psql stage_dev
 
+-- Create the personal org first.
+INSERT INTO orgs (slug, name) VALUES ('demo', 'Demo') RETURNING id;
+-- Note the returned id; we'll call it <org_id>.
+
+-- Create the user referencing that org.
 INSERT INTO users (github_id, github_login, default_org_id)
-VALUES (1, 'demo', 1) RETURNING id;
--- Assume user id is 1.
+VALUES (1, 'demo', <org_id>) RETURNING id;
+-- Note the returned id; we'll call it <user_id>.
 
-INSERT INTO org_members (org_id, user_id, role) VALUES (1, 1, 'owner');
+-- Make the user an owner of the org.
+INSERT INTO org_members (org_id, user_id, role) VALUES (<org_id>, <user_id>, 'owner');
 
+-- Create a project.
 INSERT INTO projects (org_id, slug, name, public)
-VALUES (1, 'smoke-test', 'Smoke Test', true) RETURNING id;
--- Assume project id is 1.
+VALUES (<org_id>, 'smoke-test', 'Smoke Test', true);
 ```
 
-Create an API key for the user. The key value is SHA-256-hashed in the database. Generate one with the helper in the integration package:
+Create a push-scoped API key for that user. The server stores only the SHA-256 hash; you need to generate the raw value yourself and record it before inserting:
 
 ```python
 # uv run python -c "..."
-import hashlib, secrets
-raw = "stage_sk_" + secrets.token_hex(24)
+import hashlib, uuid
+raw = f"stage_sk_{uuid.uuid4().hex}{uuid.uuid4().hex}"
 hashed = hashlib.sha256(raw.encode()).hexdigest()
 print(f"raw key (copy this): {raw}")
 print(f"hash to insert:      {hashed}")
 ```
 
-Then insert it:
+Then insert the hash:
 
 ```sql
 INSERT INTO api_keys (user_id, scope, name, key_hash)
-VALUES (1, 'push', 'local dev key', '<hash from above>');
+VALUES (<user_id>, 'push', 'local dev key', '<hash from above>');
 ```
 
-## First-push smoke test
-
-This test creates a synthetic run with seven events and verifies the server accepts them.
-
-**Install the integration package:**
+Set the environment variables:
 
 ```bash
-cd integration
-uv sync
-cd ..
-```
-
-**Set environment variables:**
-
-```bash
-export STAGE_API_KEY=stage_sk_...   # the raw key from above
+export STAGE_API_KEY=stage_sk_...   # the raw key printed above
 export STAGE_BASE_URL=http://localhost:3000
 export STAGE_PROJECT=demo/smoke-test
 ```
 
-**Run the smoke test:**
+## Running the automated tests
+
+The Rust end-to-end test in `server/tests/e2e.rs` exercises the full push-to-view path against an isolated test database. It creates a user and project directly, creates an API key, pushes a run with 20 events across all event kinds, finalizes the run, and verifies the read endpoints return what was written.
 
 ```bash
+DATABASE_URL=postgres://localhost/stage_dev cargo test --test e2e
+```
+
+The test creates and tears down its own database (using sqlx's test infrastructure) so it does not affect `stage_dev`. On success the test prints a summary:
+
+```
+Push-to-view smoke test passed.
+  Run ID:   019542a3-...
+  Status:   completed
+  Events:   21 accepted, idempotency verified
+  Outcome:  correctness=0.92, efficiency=0.78
+  Cost:     $0.0183
+```
+
+## Manual smoke test with Python
+
+The `integration/scripts/smoke_test.py` script pushes a synthetic run through the HTTP API and prints the run URL, which you can open in the browser to verify the trace viewer.
+
+Install the integration package and run it:
+
+```bash
+cd integration && uv sync && cd ..
 uv run python integration/scripts/smoke_test.py
 ```
 
-Expected output:
+Expected output ends with the run URL and "Smoke test passed." Open the URL to confirm the trace viewer loads, the status is "completed", and the seven events appear in the timeline.
 
-```
-Creating run on http://localhost:3000 in project demo/smoke-test …
-  run id:  019542a3-...
-  run url: http://localhost:3000/demo/smoke-test/runs/019542a3-...
-  status -> running
-  pushed 7 events
-  status -> completed
-
-Final status: completed
-Outcome:      {"scores": {"correctness": 1.0}}
-
-Open the trace viewer:
-  http://localhost:3000/demo/smoke-test/runs/019542a3-...
-
-Smoke test passed.
-```
-
-**Verify in the browser:**
-
-Open the run URL. The trace viewer should load and show:
-- A "completed" status badge in the sidebar.
-- Seven events in the timeline view (actor message from user, actor message from agent, tool call, tool result, cost record, and two system notes).
-- The chat view showing the user/agent message exchange.
-- Outcome `{"scores": {"correctness": 1.0}}` in the sidebar.
-
-If any step fails, check the server log (`RUST_LOG=debug cargo run`) for details. Common issues:
-
-- `401 Unauthorized`: API key hash does not match. Recheck the SHA-256 computation.
-- `404 Not Found` on run creation: The project `demo/smoke-test` does not exist. Check the insert above.
-- Template render errors: Run `cargo build` to recompile templates and see any compile-time errors.
-
-## Running tests
-
-```bash
-# Rust tests (requires DATABASE_URL to be set).
-cargo test --all
-
-# Python integration tests.
-cd integration && uv run pytest
-```
+If you see a 401, the API key hash does not match -- recheck the SHA-256 computation. If you see a 404 on run creation, the project `demo/smoke-test` does not exist -- run the SQL inserts above first.
 
 ## Hot-reloading during development
 
-The server does not hot-reload. For rapid iteration on templates or static assets, use `cargo-watch`:
+The server does not hot-reload automatically. `cargo-watch` rebuilds and restarts on file changes:
 
 ```bash
 cargo install cargo-watch
 cargo watch -x 'run --bin stage-server'
 ```
 
-This rebuilds and restarts the server on any file change under `server/` or `web/`. CSS and JS changes under `web/static/` do not require a restart since they are served from disk.
+This picks up changes under `server/src/` and `web/templates/`. CSS and JS under `web/static/` are served from disk and take effect on the next browser request without a restart.
