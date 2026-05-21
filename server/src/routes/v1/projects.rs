@@ -1,14 +1,17 @@
 #![allow(unused_variables)]
 
 use axum::{
-    Json,
     extract::{Path, Query, State},
+    Json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::{AppError, AppState, auth::{ApiKeyAuth, MaybeUser}};
+use crate::{
+    auth::{ApiKeyAuth, MaybeUser},
+    AppError, AppState,
+};
 
 #[derive(Deserialize)]
 pub struct ListRunsQuery {

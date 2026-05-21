@@ -4,10 +4,10 @@ use axum::{
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use chrono::Utc;
-use jsonwebtoken::{EncodingKey, Header, encode};
+use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Deserialize;
 
-use crate::{AppError, AppState, auth::middleware::SessionClaims};
+use crate::{auth::middleware::SessionClaims, AppError, AppState};
 
 fn github_auth_url(state: &AppState, csrf: &str) -> String {
     format!(

@@ -13,8 +13,7 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let config = stage_server::config::Config::from_env()
-        .context("failed to load config")?;
+    let config = stage_server::config::Config::from_env().context("failed to load config")?;
     let pool = stage_server::db::connect(&config.database_url)
         .await
         .context("failed to connect to database")?;

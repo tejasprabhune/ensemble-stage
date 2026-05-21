@@ -34,7 +34,11 @@ impl IntoResponse for AppError {
         let (status, code, message) = match &self {
             AppError::Database(e) => {
                 tracing::error!("database error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "database_error", "database error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "database_error",
+                    "database error".to_string(),
+                )
             }
             AppError::NotFound => (StatusCode::NOT_FOUND, "not_found", "not found".to_string()),
             AppError::Unauthorized => (
@@ -47,9 +51,7 @@ impl IntoResponse for AppError {
                 "forbidden",
                 "insufficient permissions".to_string(),
             ),
-            AppError::BadRequest(msg) => {
-                (StatusCode::BAD_REQUEST, "bad_request", msg.clone())
-            }
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg.clone()),
             AppError::NotImplemented => (
                 StatusCode::NOT_IMPLEMENTED,
                 "not_implemented",
@@ -57,7 +59,11 @@ impl IntoResponse for AppError {
             ),
             AppError::Internal(e) => {
                 tracing::error!("internal error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal_error", e.to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_error",
+                    e.to_string(),
+                )
             }
         };
 

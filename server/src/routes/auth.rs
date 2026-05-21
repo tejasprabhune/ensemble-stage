@@ -1,6 +1,6 @@
-use axum::{Router, routing::get};
-use crate::AppState;
 use crate::auth::github;
+use crate::AppState;
+use axum::{routing::get, Router};
 
 pub fn router() -> Router<AppState> {
     Router::new()

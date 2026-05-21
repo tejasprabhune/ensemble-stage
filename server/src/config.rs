@@ -18,8 +18,7 @@ impl Config {
             port: env::var("PORT")
                 .unwrap_or_else(|_| "3000".to_string())
                 .parse()?,
-            base_url: env::var("BASE_URL")
-                .unwrap_or_else(|_| "http://localhost:3000".to_string()),
+            base_url: env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string()),
             github_client_id: env::var("GITHUB_CLIENT_ID").unwrap_or_default(),
             github_client_secret: env::var("GITHUB_CLIENT_SECRET").unwrap_or_default(),
             jwt_secret: env::var("JWT_SECRET")

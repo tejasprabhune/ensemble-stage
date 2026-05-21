@@ -4,7 +4,7 @@ use axum::{
     http::{header, request::Parts},
 };
 use axum_extra::extract::CookieJar;
-use jsonwebtoken::{DecodingKey, Validation, decode};
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
 use crate::{AppError, AppState};
@@ -126,7 +126,10 @@ where
             _ => return Err(AppError::Unauthorized),
         };
 
-        Ok(ApiKeyAuth { user_id: row.0, scope })
+        Ok(ApiKeyAuth {
+            user_id: row.0,
+            scope,
+        })
     }
 }
 

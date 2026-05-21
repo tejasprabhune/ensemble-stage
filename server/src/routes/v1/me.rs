@@ -1,12 +1,12 @@
 #![allow(unused_variables)]
 
 use axum::{
-    Json,
     extract::{Path, State},
+    Json,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{AppError, AppState, auth::RequireUser};
+use crate::{auth::RequireUser, AppError, AppState};
 
 #[derive(Serialize)]
 pub struct MeResponse {
