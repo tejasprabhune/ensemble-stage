@@ -536,6 +536,14 @@ async fn landing(maybe_user: MaybeUser) -> Result<Html<String>, AppError> {
     })
 }
 
+#[derive(Template)]
+#[template(path = "cli_done.html")]
+struct CliDoneTemplate {}
+
+async fn cli_done() -> Result<Html<String>, AppError> {
+    render(CliDoneTemplate {})
+}
+
 async fn project(
     State(state): State<AppState>,
     maybe_user: MaybeUser,
@@ -1267,4 +1275,5 @@ pub fn router() -> Router<AppState> {
         .route("/me", get(account))
         .route("/me/keys", post(create_key))
         .route("/me/keys/:id", delete(revoke_key))
+        .route("/auth/cli/done", get(cli_done))
 }
