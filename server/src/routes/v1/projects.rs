@@ -460,3 +460,138 @@ pub async fn create_training_run(
         }),
     ))
 }
+
+#[derive(Serialize)]
+pub struct SweepSummary {
+    pub id: Uuid,
+    pub status: String,
+    pub config: Value,
+    pub started_at: Option<DateTime<Utc>>,
+    pub ended_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize)]
+pub struct ListSweepsResponse {
+    pub sweeps: Vec<SweepSummary>,
+}
+
+pub async fn list_sweeps(
+    State(state): State<AppState>,
+    maybe_user: MaybeUser,
+    maybe_key: MaybeApiKey,
+    Path((org_slug, project_slug)): Path<(String, String)>,
+) -> Result<Json<ListSweepsResponse>, AppError> {
+    let (project_id, public) = sqlx::query_as::<_, (i64, bool)>(
+        "SELECT p.id, p.public FROM projects p JOIN orgs o ON o.id = p.org_id WHERE o.slug = $1 AND p.slug = $2",
+    )
+    .bind(&org_slug)
+    .bind(&project_slug)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or(AppError::NotFound)?;
+
+    if !public && maybe_user.0.is_none() && maybe_key.0.is_none() {
+        return Err(AppError::Forbidden);
+    }
+
+    let rows = sqlx::query_as::<
+        _,
+        (Uuid, String, Value, Option<DateTime<Utc>>, Option<DateTime<Utc>>, DateTime<Utc>),
+    >(
+        "SELECT id, status::text, config, started_at, ended_at, created_at FROM sweeps WHERE project_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(project_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let sweeps = rows
+        .into_iter()
+        .map(|r| SweepSummary {
+            id: r.0,
+            status: r.1,
+            config: r.2,
+            started_at: r.3,
+            ended_at: r.4,
+            created_at: r.5,
+        })
+        .collect();
+
+    Ok(Json(ListSweepsResponse { sweeps }))
+}
+
+#[derive(Serialize)]
+pub struct TrainingRunSummary {
+    pub id: Uuid,
+    pub persona_name: String,
+    pub base_model: String,
+    pub status: String,
+    pub started_at: Option<DateTime<Utc>>,
+    pub ended_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub artifact_uri: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ListTrainingRunsResponse {
+    pub training_runs: Vec<TrainingRunSummary>,
+}
+
+pub async fn list_training_runs(
+    State(state): State<AppState>,
+    maybe_user: MaybeUser,
+    maybe_key: MaybeApiKey,
+    Path((org_slug, project_slug)): Path<(String, String)>,
+) -> Result<Json<ListTrainingRunsResponse>, AppError> {
+    let (project_id, public) = sqlx::query_as::<_, (i64, bool)>(
+        "SELECT p.id, p.public FROM projects p JOIN orgs o ON o.id = p.org_id WHERE o.slug = $1 AND p.slug = $2",
+    )
+    .bind(&org_slug)
+    .bind(&project_slug)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or(AppError::NotFound)?;
+
+    if !public && maybe_user.0.is_none() && maybe_key.0.is_none() {
+        return Err(AppError::Forbidden);
+    }
+
+    let rows = sqlx::query_as::<
+        _,
+        (
+            Uuid,
+            String,
+            String,
+            String,
+            Option<DateTime<Utc>>,
+            Option<DateTime<Utc>>,
+            DateTime<Utc>,
+            Option<String>,
+        ),
+    >(
+        "SELECT id, persona_name, base_model, status::text, started_at, ended_at, created_at, artifact_uri FROM training_runs WHERE project_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(project_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let training_runs = rows
+        .into_iter()
+        .map(|r| TrainingRunSummary {
+            id: r.0,
+            persona_name: r.1,
+            base_model: r.2,
+            status: r.3,
+            started_at: r.4,
+            ended_at: r.5,
+            created_at: r.6,
+            artifact_uri: r.7,
+        })
+        .collect();
+
+    Ok(Json(ListTrainingRunsResponse { training_runs }))
+}

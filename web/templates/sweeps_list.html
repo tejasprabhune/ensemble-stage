@@ -1,0 +1,91 @@
+{% extends "base-app.html" %}
+
+{% block title %}Sweeps - {{ project_slug }} - Stage{% endblock %}
+
+{% block topnav %}
+<a href="/{{ org_slug }}">{{ org_slug }}</a>
+<span class="sep">/</span>
+<a href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+<span class="sep">/</span>
+sweeps
+{% endblock %}
+
+{% block rail_project %}
+<a class="rail-project active" href="/{{ org_slug }}/{{ project_slug }}">{{ project_slug }}</a>
+{% endblock %}
+
+{% block rail_nav %}
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}">Runs</a></li>
+<li class="rail-nav-item active"><a href="/{{ org_slug }}/{{ project_slug }}/sweeps">Sweeps</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/training">Training</a></li>
+<li class="rail-nav-item"><a href="/{{ org_slug }}/{{ project_slug }}/compare">Compare</a></li>
+<li class="rail-nav-item"><a href="#">Settings</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="list-layout">
+  <div id="sweepsTable" class="list-loading muted">Loading sweeps…</div>
+</div>
+
+<script>
+(function () {
+  const orgSlug = {{ org_slug|json }};
+  const projectSlug = {{ project_slug|json }};
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function fmtTs(s) {
+    return s ? new Date(s).toLocaleString() : '—';
+  }
+
+  function configSummary(cfg) {
+    const parts = [];
+    if (cfg.scenarios?.length) parts.push(`${cfg.scenarios.length} scenario${cfg.scenarios.length > 1 ? 's' : ''}`);
+    if (cfg.backends?.length) parts.push(`${cfg.backends.length} backend${cfg.backends.length > 1 ? 's' : ''}`);
+    if (cfg.n_trials) parts.push(`${cfg.n_trials} trial${cfg.n_trials > 1 ? 's' : ''}`);
+    return parts.join(', ') || '—';
+  }
+
+  async function load() {
+    const r = await fetch(`/v1/projects/${orgSlug}/${projectSlug}/sweeps`);
+    const container = document.getElementById('sweepsTable');
+    if (!r.ok) { container.textContent = 'Could not load sweeps.'; return; }
+    const { sweeps } = await r.json();
+
+    if (!sweeps.length) {
+      container.innerHTML = `<p class="muted">No sweeps yet. Use <code>ensemble sweep run sweep.toml</code> to start one.</p>`;
+      return;
+    }
+
+    const rows = sweeps.map(s => `
+      <tr class="project-row" onclick="location.href='/${orgSlug}/${projectSlug}/sweeps/${s.id}'">
+        <td class="col-id"><a class="mono" href="/${orgSlug}/${projectSlug}/sweeps/${s.id}">${escHtml(s.id.slice(0,8))}</a></td>
+        <td><span class="status-badge status-${s.status}">${s.status}</span></td>
+        <td class="muted">${configSummary(s.config)}</td>
+        <td class="muted">${fmtTs(s.started_at)}</td>
+        <td class="muted">${fmtTs(s.ended_at)}</td>
+        <td class="muted">${fmtTs(s.created_at)}</td>
+      </tr>`).join('');
+
+    container.innerHTML = `
+      <table class="projects-table">
+        <thead>
+          <tr>
+            <th class="col-id">ID</th>
+            <th>Status</th>
+            <th>Config</th>
+            <th>Started</th>
+            <th>Ended</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  load();
+})();
+</script>
+{% endblock %}

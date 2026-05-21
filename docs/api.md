@@ -48,6 +48,73 @@ Error codes:
 | `conflict` | 409 | Duplicate resource (e.g., duplicate `event_id`). |
 | `internal_error` | 500 | Server-side failure. |
 
+## Orgs
+
+### `GET /v1/orgs/{org_slug}`
+
+Returns org metadata and the list of projects the caller can see.
+
+**Auth:** Session cookie or API key with `admin` scope. The caller must be a member of the org.
+
+**Response `200`:**
+
+```json
+{
+  "slug": "myorg",
+  "name": "My Org",
+  "projects": [
+    {
+      "slug": "popcornbench",
+      "name": "Popcornbench",
+      "public": true,
+      "description": null,
+      "created_at": "2025-01-15T09:23:00Z",
+      "url": "https://stage.ensemble.sh/myorg/popcornbench"
+    }
+  ]
+}
+```
+
+### `POST /v1/projects/{org_slug}`
+
+Create a project inside an org.
+
+**Auth:** Session cookie or API key with `admin` scope. The caller must be a member of the org.
+
+**Request body:**
+
+```json
+{
+  "slug": "popcornbench",
+  "name": "Popcornbench",
+  "public": true,
+  "description": "Evaluation harness for the popcorn scenario family."
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `slug` | yes | URL slug. Must match `[a-z0-9-]+`, 1 to 50 characters, unique within the org. |
+| `name` | yes | Display name, 1 to 100 characters. |
+| `public` | yes | Whether the project is publicly readable without credentials. |
+| `description` | no | Short description, at most 500 characters. |
+
+**Response `201`:**
+
+```json
+{
+  "org_slug": "myorg",
+  "project_slug": "popcornbench",
+  "name": "Popcornbench",
+  "public": true,
+  "description": null,
+  "created_at": "2025-01-15T09:23:00Z",
+  "url": "https://stage.ensemble.sh/myorg/popcornbench"
+}
+```
+
+Returns `409` if a project with the same slug already exists in the org.
+
 ## Projects
 
 ### `GET /v1/projects/{org_slug}/{project_slug}`
@@ -142,6 +209,54 @@ Create a run. The org and project must already exist. Called by the ensemble int
 {
   "id": "019542a3-4e7b-7000-8e1d-3f9a1c2d5e6f",
   "url": "https://stage.ensemble.sh/myorg/popcornbench/runs/019542a3-..."
+}
+```
+
+### `GET /v1/projects/{org_slug}/{project_slug}/sweeps`
+
+List sweeps for a project, newest first.
+
+**Auth:** Same as `GET /v1/projects/...`.
+
+**Response `200`:**
+
+```json
+{
+  "sweeps": [
+    {
+      "id": "019542b0-...",
+      "status": "completed",
+      "config": { "scenarios": ["popcorn.single_problem"], "backends": ["claude-sonnet-4-5"], "n_trials": 5 },
+      "started_at": "2025-01-15T09:00:00Z",
+      "ended_at": "2025-01-15T10:30:00Z",
+      "created_at": "2025-01-15T08:59:58Z"
+    }
+  ]
+}
+```
+
+### `GET /v1/projects/{org_slug}/{project_slug}/training_runs`
+
+List training runs for a project, newest first.
+
+**Auth:** Same as `GET /v1/projects/...`.
+
+**Response `200`:**
+
+```json
+{
+  "training_runs": [
+    {
+      "id": "019542c1-...",
+      "persona_name": "popcorn-v2",
+      "base_model": "claude-haiku-4-5",
+      "status": "completed",
+      "started_at": "2025-01-14T14:00:00Z",
+      "ended_at": "2025-01-14T18:22:00Z",
+      "created_at": "2025-01-14T13:59:45Z",
+      "artifact_uri": "gs://ensemble-artifacts/adapters/popcorn-v2.safetensors"
+    }
+  ]
 }
 ```
 
@@ -472,6 +587,34 @@ Returns a sweep and its status.
 }
 ```
 
+### `GET /v1/sweeps/{sweep_id}/runs`
+
+Return all child runs of a sweep with their outcomes.
+
+**Auth:** Same as `GET /v1/sweeps/{sweep_id}`.
+
+**Response `200`:**
+
+```json
+{
+  "runs": [
+    {
+      "id": "019542a3-...",
+      "scenario": "popcorn.single_problem",
+      "world": "popcorn",
+      "backend": "claude-sonnet-4-5",
+      "status": "completed",
+      "outcome": { "scores": { "correctness": 0.92 } },
+      "wall_time_ms": 47000,
+      "total_cost": { "usd": 0.0183 },
+      "started_at": "2025-01-15T09:30:00Z",
+      "ended_at": "2025-01-15T09:30:47Z",
+      "created_at": "2025-01-15T09:29:58Z"
+    }
+  ]
+}
+```
+
 ### `POST /v1/sweeps/{sweep_id}/runs`
 
 Register an existing run as a child of a sweep. The run must already exist and must belong to the same project.
@@ -542,6 +685,26 @@ Returns a training run.
   "created_at": "2025-01-14T13:59:45Z"
 }
 ```
+
+### `GET /v1/training_runs/{id}/metrics`
+
+Return all metric measurements for a training run.
+
+**Auth:** Same as `GET /v1/training_runs/{id}`.
+
+**Response `200`:**
+
+```json
+{
+  "metrics": [
+    { "step": 100, "metric_name": "train_loss", "value": 1.42, "recorded_at": "2025-01-14T14:05:00Z" },
+    { "step": 100, "metric_name": "eval_loss",  "value": 1.57, "recorded_at": "2025-01-14T14:05:00Z" },
+    { "step": 200, "metric_name": "train_loss", "value": 1.18, "recorded_at": "2025-01-14T14:12:00Z" }
+  ]
+}
+```
+
+Metrics are returned in ascending step order. For polling during an active training run, call this endpoint repeatedly; newly appended points appear in subsequent responses.
 
 ### `POST /v1/training_runs/{id}/metrics`
 

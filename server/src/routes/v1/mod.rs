@@ -28,11 +28,11 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/projects/:org_slug/:project_slug/sweeps",
-            post(projects::create_sweep),
+            get(projects::list_sweeps).post(projects::create_sweep),
         )
         .route(
             "/projects/:org_slug/:project_slug/training_runs",
-            post(projects::create_training_run),
+            get(projects::list_training_runs).post(projects::create_training_run),
         )
         // run endpoints
         .route("/runs/:run_id", get(runs::get_run))

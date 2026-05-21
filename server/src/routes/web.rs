@@ -138,6 +138,22 @@ struct RunDetailTemplate {
 }
 
 #[derive(Template)]
+#[template(path = "sweeps_list.html")]
+struct SweepsListTemplate {
+    org_slug: String,
+    project_slug: String,
+    user: UserCtx,
+}
+
+#[derive(Template)]
+#[template(path = "training_list.html")]
+struct TrainingListTemplate {
+    org_slug: String,
+    project_slug: String,
+    user: UserCtx,
+}
+
+#[derive(Template)]
 #[template(path = "sweep.html")]
 struct SweepTemplate {
     sweep_id: String,
@@ -830,6 +846,28 @@ async fn revoke_key(
     })
 }
 
+async fn sweeps_list(
+    maybe_user: MaybeUser,
+    Path((org_slug, project_slug)): Path<(String, String)>,
+) -> Result<Html<String>, AppError> {
+    render(SweepsListTemplate {
+        org_slug,
+        project_slug,
+        user: UserCtx::from(&maybe_user),
+    })
+}
+
+async fn training_list(
+    maybe_user: MaybeUser,
+    Path((org_slug, project_slug)): Path<(String, String)>,
+) -> Result<Html<String>, AppError> {
+    render(TrainingListTemplate {
+        org_slug,
+        project_slug,
+        user: UserCtx::from(&maybe_user),
+    })
+}
+
 async fn org_page(
     State(state): State<AppState>,
     maybe_user: MaybeUser,
@@ -1034,7 +1072,9 @@ pub fn router() -> Router<AppState> {
         .route("/:org_slug/:project_slug", get(project))
         .route("/:org_slug/:project_slug/runs-partial", get(runs_partial))
         .route("/:org_slug/:project_slug/runs/:run_id", get(run_detail))
+        .route("/:org_slug/:project_slug/sweeps", get(sweeps_list))
         .route("/:org_slug/:project_slug/sweeps/:sweep_id", get(sweep))
+        .route("/:org_slug/:project_slug/training", get(training_list))
         .route(
             "/:org_slug/:project_slug/training_runs/:id",
             get(training_run),

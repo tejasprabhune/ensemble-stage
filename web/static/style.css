@@ -1754,3 +1754,14 @@ textarea.form-input {
 .meta-value {
   color: var(--color-fg);
 }
+
+/* Generic list pages (sweeps, training runs) */
+
+.list-layout {
+  padding: var(--space-4) var(--space-5);
+}
+
+.list-loading {
+  font-size: var(--text-sm);
+  padding: var(--space-4) 0;
+}
