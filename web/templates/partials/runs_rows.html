@@ -1,10 +1,11 @@
 {% if runs.is_empty() %}
 <tr class="table-empty">
   <td colspan="11">
-    No runs yet. Start pushing runs from ensemble:
-    <pre class="empty-code">export STAGE_API_KEY=stage_sk_...
-export STAGE_BASE_URL={{ base_url }}
-# runs appear here automatically once the integration is configured.</pre>
+    {% if has_any_runs %}
+    No runs match this filter.
+    {% else %}
+    No runs yet.
+    {% endif %}
   </td>
 </tr>
 {% else %}

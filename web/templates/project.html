@@ -40,6 +40,35 @@
 {% block content %}
 <div class="project-layout">
 
+  {% if !has_any_runs %}
+  <div class="project-empty-state">
+    <p>This project has no runs yet. ensemble pushes a run here automatically when a scenario completes. Set these two variables in your shell before running any scenario:</p>
+    {% if let Some(key_name) = api_key_name %}
+    <div class="snippet-wrap">
+      <pre class="install-snippet" id="installSnippet">export ENSEMBLE_STAGE_API_KEY="stage_sk_..."  # your key: {{ key_name }}
+export ENSEMBLE_STAGE_PROJECT="{{ org_slug }}/{{ project_slug }}"
+
+# then run any scenario:
+ensemble run plank.refund_storm</pre>
+      <button class="snippet-copy-btn" onclick="copySnippet(this)" title="Copy to clipboard">Copy</button>
+    </div>
+    {% else %}
+    <p class="empty-state-key-warning">
+      You have no API keys yet. <a href="/me">Create a push-scoped key at /me</a>, then return here for the install snippet.
+    </p>
+    <div class="snippet-wrap">
+      <pre class="install-snippet" id="installSnippet">export ENSEMBLE_STAGE_API_KEY="stage_sk_..."  # create a key at /me
+export ENSEMBLE_STAGE_PROJECT="{{ org_slug }}/{{ project_slug }}"
+
+# then run any scenario:
+ensemble run plank.refund_storm</pre>
+      <button class="snippet-copy-btn" onclick="copySnippet(this)" title="Copy to clipboard">Copy</button>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if has_any_runs %}
   <div class="filter-bar" id="filterBar">
     <select name="sort" class="sort-select"
       hx-get="/{{ org_slug }}/{{ project_slug }}/runs-partial"
@@ -82,6 +111,20 @@
       </tbody>
     </table>
   </div>
+  {% endif %}
 
 </div>
+
+<script>
+function copySnippet(btn) {
+  const pre = document.getElementById('installSnippet');
+  if (pre) {
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+      const prev = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(() => { btn.textContent = prev; }, 2000);
+    });
+  }
+}
+</script>
 {% endblock %}
