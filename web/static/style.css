@@ -553,6 +553,7 @@
 .run-layout {
   display: grid;
   grid-template-columns: 1fr var(--sidebar-w);
+  grid-template-rows: auto 1fr;
   height: calc(100vh - var(--topbar-h-app));
   overflow: hidden;
 }

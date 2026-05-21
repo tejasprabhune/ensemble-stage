@@ -25,7 +25,7 @@ runs
 {% endblock %}
 
 {% block content %}
-<div style="display:flex; flex-direction:column; height:calc(100vh - var(--topbar-h-app));">
+<div class="run-layout">
 
   <div class="run-header" id="runHeader">
     <span class="run-header-id" id="metaId">{{ run_id }}</span>
@@ -50,9 +50,7 @@ runs
     <span class="run-header-value muted" id="metaDuration">—</span>
   </div>
 
-  <div style="display:grid; grid-template-columns:1fr var(--sidebar-w); flex:1; min-height:0;">
-
-    <div class="run-main-area">
+  <div class="run-main-area">
       <div class="viewer" id="traceViewer">
         <div class="viewer-controls">
           <button id="prevBtn" title="Previous event (&#8592;)">&#8592;</button>
@@ -128,7 +126,6 @@ runs
       </div>
     </aside>
 
-  </div>
 </div>
 
 <script>
