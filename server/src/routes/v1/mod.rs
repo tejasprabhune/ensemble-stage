@@ -59,6 +59,8 @@ pub fn router() -> Router<AppState> {
             "/training_runs/:id/status",
             post(training_runs::update_status),
         )
+        .route("/training_runs/:id/past_runs", get(training_runs::get_past_runs))
+        .route("/training_runs/:id/baseline_comparison", get(training_runs::baseline_comparison))
         // me / api keys
         .route("/me", get(me::get_me))
         .route(
