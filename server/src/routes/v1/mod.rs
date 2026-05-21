@@ -1,5 +1,6 @@
 pub mod events;
 pub mod me;
+pub mod orgs;
 pub mod projects;
 pub mod runs;
 pub mod sweeps;
@@ -13,6 +14,9 @@ use axum::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        // org endpoints
+        .route("/orgs/:org_slug", get(orgs::get_org))
+        .route("/projects/:org_slug", post(orgs::create_project))
         // project-scoped
         .route(
             "/projects/:org_slug/:project_slug",
@@ -39,13 +43,16 @@ pub fn router() -> Router<AppState> {
         .route("/runs/:run_id/status", post(runs::update_status))
         // sweep endpoints
         .route("/sweeps/:sweep_id", get(sweeps::get_sweep))
-        .route("/sweeps/:sweep_id/runs", post(sweeps::register_run))
+        .route(
+            "/sweeps/:sweep_id/runs",
+            get(orgs::get_sweep_runs).post(sweeps::register_run),
+        )
         .route("/sweeps/:sweep_id/status", post(sweeps::update_status))
         // training run endpoints
         .route("/training_runs/:id", get(training_runs::get_training_run))
         .route(
             "/training_runs/:id/metrics",
-            post(training_runs::append_metrics),
+            get(orgs::get_training_metrics).post(training_runs::append_metrics),
         )
         .route(
             "/training_runs/:id/status",
