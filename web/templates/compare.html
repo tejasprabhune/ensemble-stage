@@ -113,9 +113,20 @@ compare
       evA.length ? evA[evA.length - 1].sequence_number : 0,
       evB.length ? evB[evB.length - 1].sequence_number : 0,
     );
+    const totalTicks = maxSeq + 1;
 
     const mapA = Object.fromEntries(evA.map(e => [e.sequence_number, e]));
     const mapB = Object.fromEntries(evB.map(e => [e.sequence_number, e]));
+
+    // Compare semantic event content only; the outer payload wraps the
+    // Event struct which includes ts_ms that differs between runs of the
+    // same scenario. Two runs are event-identical if their kind, actor,
+    // and inner payload content match regardless of timestamps.
+    function eventSig(ev) {
+      const outer = ev.payload || {};
+      const inner = outer.payload || {};
+      return JSON.stringify({ kind: ev.kind, actor: outer.actor ?? null, content: inner });
+    }
 
     let firstDivergence = null;
     let identicalCount = 0;
@@ -123,8 +134,12 @@ compare
     const rows = [];
     for (let i = 0; i <= maxSeq; i++) {
       const a = mapA[i], b = mapB[i];
-      const same = a && b && a.kind === b.kind && JSON.stringify(a.payload) === JSON.stringify(b.payload);
-      if (same) { identicalCount++; } else if (firstDivergence === null) { firstDivergence = i; }
+      const same = a && b && eventSig(a) === eventSig(b);
+      if (same) {
+        identicalCount++;
+      } else if (firstDivergence === null) {
+        firstDivergence = i;
+      }
       const rowCls = same ? 'compare-tick-same' : 'compare-tick-diff';
       rows.push(`<tr class="${rowCls}"><td class="compare-seq muted">${i}</td>${eventCell(a)}${eventCell(b)}</tr>`);
     }
@@ -144,8 +159,8 @@ compare
 
     const summary = `
       <div class="compare-summary muted">
-        ${identicalCount} of ${maxSeq} events identical.
-        ${firstDivergence ? `Diverged at tick ${firstDivergence}.` : 'No divergence.'}
+        ${identicalCount} of ${totalTicks} events identical.
+        ${firstDivergence !== null ? `Diverged at tick ${firstDivergence}.` : 'No divergence.'}
       </div>`;
 
     const timeline = `

@@ -38,12 +38,12 @@
       <td class="muted">{{ key.expires_at }}</td>
       <td class="key-actions">
         <span class="revoke-confirm" id="revoke-confirm-{{ key.id }}" hidden>
-          Revoke <strong>{{ key.name }}</strong>? This cannot be undone.
+          <span class="muted" style="font-size:var(--text-xs)">Revoke?</span>
           <button
             class="btn-danger"
             hx-delete="/me/keys/{{ key.id }}"
             hx-target="#api-keys-section"
-            hx-swap="outerHTML">Yes, revoke</button>
+            hx-swap="outerHTML">Yes</button>
           <button class="btn-link" onclick="document.getElementById('revoke-confirm-{{ key.id }}').hidden=true;document.getElementById('revoke-btn-{{ key.id }}').hidden=false">Cancel</button>
         </span>
         <button

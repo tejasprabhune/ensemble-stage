@@ -3,7 +3,21 @@
 {% block title %}Account - Stage{% endblock %}
 
 {% block topnav %}
+{% if let Some(login) = user.github_login %}
+<a href="/{{ login }}">{{ login }}</a>
+<span class="sep">/</span>
+{% endif %}
 <span>Account</span>
+{% endblock %}
+
+{% block rail_project %}
+{% if let Some(login) = user.github_login %}
+<a class="rail-project" href="/{{ login }}">{{ login }}</a>
+{% endif %}
+{% endblock %}
+
+{% block rail_nav %}
+<li class="rail-nav-item active"><a href="/me">Account</a></li>
 {% endblock %}
 
 {% block content %}

@@ -124,6 +124,7 @@ struct RunDetailTemplate {
     org_slug: String,
     project_slug: String,
     user: UserCtx,
+    is_authed: bool,
     scenario: String,
     world: String,
     backend: String,
@@ -663,12 +664,14 @@ async fn run_detail(
         .map(|v| serde_json::to_string_pretty(v).unwrap_or_else(|_| "—".into()))
         .unwrap_or_else(|| "—".into());
 
+    let is_authed = maybe_user.0.is_some();
     render(RunDetailTemplate {
         run_id_short: run_id[..8.min(run_id.len())].to_string(),
         run_id,
         org_slug,
         project_slug,
         user: UserCtx::from(&maybe_user),
+        is_authed,
         scenario: row.0,
         world: row.1,
         backend: row.2,
