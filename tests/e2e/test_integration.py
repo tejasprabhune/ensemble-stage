@@ -48,7 +48,7 @@ def test_run_pushes_events_to_stage(live_server, test_project, test_user):
     }
 
     result = subprocess.run(
-        [str(ENSEMBLE_CLI), "run", "plank.refund_storm"],
+        [str(ENSEMBLE_CLI), "run", "agora.refund_storm"],
         env=env,
         cwd=str(ENSEMBLE_REPO),
         capture_output=True,
@@ -114,7 +114,7 @@ def test_run_detail_page_shows_events(
     }
 
     result = subprocess.run(
-        [str(ENSEMBLE_CLI), "run", "plank.refund_storm"],
+        [str(ENSEMBLE_CLI), "run", "agora.refund_storm"],
         env=env,
         cwd=str(ENSEMBLE_REPO),
         capture_output=True,
