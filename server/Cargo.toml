@@ -31,3 +31,7 @@ time = "0.3"
 urlencoding = "2"
 dotenvy = "0.15"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }
+http-body-util = "0.1"

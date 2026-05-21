@@ -107,7 +107,7 @@ where
         let key_hash = hash_api_key(raw_key);
 
         let row = sqlx::query_as::<_, (i64, String)>(
-            "SELECT user_id, scope FROM api_keys WHERE key_hash = $1 AND (expires_at IS NULL OR expires_at > NOW())"
+            "SELECT user_id, scope::text FROM api_keys WHERE key_hash = $1 AND (expires_at IS NULL OR expires_at > NOW())"
         )
         .bind(&key_hash)
         .fetch_optional(&app_state.pool)
