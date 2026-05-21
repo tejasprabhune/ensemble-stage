@@ -303,7 +303,7 @@ fn summarize_sweep_config(config: &Value) -> String {
 
 fn format_ts(ts: Option<DateTime<Utc>>) -> String {
     ts.map(|t| t.format("%b %d %H:%M").to_string())
-        .unwrap_or_else(|| "—".into())
+        .unwrap_or_default()
 }
 
 type RunDbRow = (
