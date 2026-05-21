@@ -1,7 +1,7 @@
 use askama::Template;
 use axum::{
     extract::{Form, Path, Query, State},
-    response::Html,
+    response::{Html, IntoResponse, Redirect},
     routing::{delete, get, post},
     Router,
 };
@@ -51,10 +51,41 @@ pub struct ApiKeyRow {
     pub expires_at: String,
 }
 
+pub struct OrgProject {
+    pub slug: String,
+    pub name: String,
+    pub public: bool,
+    pub description: String,
+    pub created_at: String,
+    pub url: String,
+}
+
 #[derive(Template)]
 #[template(path = "landing.html")]
 struct LandingTemplate {
     user: UserCtx,
+}
+
+#[derive(Template)]
+#[template(path = "org.html")]
+struct OrgTemplate {
+    org_slug: String,
+    org_name: String,
+    user: UserCtx,
+    projects: Vec<OrgProject>,
+    form_error: String,
+    form_slug: String,
+    form_name: String,
+}
+
+#[derive(Template)]
+#[template(path = "compare.html")]
+struct CompareTemplate {
+    org_slug: String,
+    project_slug: String,
+    user: UserCtx,
+    run_id_a: String,
+    run_id_b: String,
 }
 
 #[derive(Template)]
@@ -68,7 +99,10 @@ struct ProjectTemplate {
     filter: String,
     sort: String,
     partial_url: String,
-    base_url: String,
+    // For the empty state onboarding snippet.
+    // Some(name) if the user has a push-scoped key; None if they need to create one.
+    api_key_name: Option<String>,
+    has_any_runs: bool,
 }
 
 #[derive(Template)]
@@ -79,7 +113,7 @@ struct RunsRowsPartial {
     filter: String,
     sort: String,
     partial_url: String,
-    base_url: String,
+    has_any_runs: bool,
 }
 
 #[derive(Template)]
@@ -433,6 +467,32 @@ struct WebRunsQuery {
     cursor: Option<String>,
 }
 
+async fn fetch_push_key_name(state: &AppState, user_id: i64) -> Option<String> {
+    sqlx::query_scalar::<_, String>(
+        r#"
+        SELECT name FROM api_keys
+        WHERE user_id = $1 AND scope = 'push'
+          AND (expires_at IS NULL OR expires_at > NOW())
+        ORDER BY last_used_at DESC NULLS LAST, created_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .ok()
+    .flatten()
+}
+
+async fn fetch_project_run_count(state: &AppState, project_id: i64) -> bool {
+    sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM runs WHERE project_id = $1")
+        .bind(project_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(0)
+        > 0
+}
+
 async fn landing(maybe_user: MaybeUser) -> Result<Html<String>, AppError> {
     render(LandingTemplate {
         user: UserCtx::from(&maybe_user),
@@ -449,6 +509,13 @@ async fn project(
     let filter = q.filter.as_deref().unwrap_or("");
     let sort = q.sort.as_deref().unwrap_or("created_at:desc");
     let cursor = q.cursor.as_deref().unwrap_or("");
+
+    let has_any_runs = fetch_project_run_count(&state, project_id).await;
+    let api_key_name = if let Some(ref u) = maybe_user.0 {
+        fetch_push_key_name(&state, u.user_id).await
+    } else {
+        None
+    };
 
     let (runs, next_cursor) = fetch_runs(
         &state,
@@ -474,7 +541,8 @@ async fn project(
         filter: filter.to_string(),
         sort: sort.to_string(),
         partial_url,
-        base_url: state.config.base_url.clone(),
+        api_key_name,
+        has_any_runs,
     })
 }
 
@@ -503,13 +571,15 @@ async fn runs_partial(
     .await?;
     let partial_url = format!("/{org_slug}/{project_slug}/runs-partial");
 
+    let has_any_runs = fetch_project_run_count(&state, project_id).await;
+
     render(RunsRowsPartial {
         runs,
         next_cursor,
         filter: filter.to_string(),
         sort: sort.to_string(),
         partial_url,
-        base_url: state.config.base_url.clone(),
+        has_any_runs,
     })
 }
 
@@ -680,6 +750,7 @@ async fn account(
 struct CreateKeyForm {
     name: String,
     scope: String,
+    expires_at: Option<String>,
 }
 
 async fn create_key(
@@ -709,13 +780,24 @@ async fn create_key(
     );
     let key_hash = hash_api_key(&raw_key);
 
+    let expires_at: Option<chrono::NaiveDate> = form
+        .expires_at
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+    let expires_at_utc = expires_at
+        .map(|d| d.and_hms_opt(23, 59, 59).unwrap())
+        .map(|dt| DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc));
+
     sqlx::query(
-        "INSERT INTO api_keys (user_id, scope, name, key_hash) VALUES ($1, $2::api_key_scope, $3, $4)",
+        "INSERT INTO api_keys (user_id, scope, name, key_hash, expires_at) VALUES ($1, $2::api_key_scope, $3, $4, $5)",
     )
     .bind(user.user_id)
     .bind(scope_str)
     .bind(&form.name)
     .bind(&key_hash)
+    .bind(expires_at_utc)
     .execute(&state.pool)
     .await
     .map_err(AppError::Database)?;
@@ -748,9 +830,207 @@ async fn revoke_key(
     })
 }
 
+async fn org_page(
+    State(state): State<AppState>,
+    maybe_user: MaybeUser,
+    Path(org_slug): Path<String>,
+) -> Result<Html<String>, AppError> {
+    let user_id = maybe_user
+        .0
+        .as_ref()
+        .map(|u| u.user_id)
+        .ok_or(AppError::NotFound)?;
+
+    // Verify org exists and user is a member; 404 for both missing and non-member
+    let row = sqlx::query_as::<_, (i64, String, bool)>(
+        r#"
+        SELECT o.id, o.name, EXISTS(
+            SELECT 1 FROM org_members om WHERE om.org_id = o.id AND om.user_id = $2
+        )
+        FROM orgs o WHERE o.slug = $1
+        "#,
+    )
+    .bind(&org_slug)
+    .bind(user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or(AppError::NotFound)?;
+
+    let (org_id, org_name, is_member) = row;
+    if !is_member {
+        return Err(AppError::NotFound);
+    }
+
+    let projects = fetch_org_projects(&state, org_id, &org_slug).await?;
+
+    render(OrgTemplate {
+        org_slug,
+        org_name,
+        user: UserCtx::from(&maybe_user),
+        projects,
+        form_error: String::new(),
+        form_slug: String::new(),
+        form_name: String::new(),
+    })
+}
+
+async fn fetch_org_projects(
+    state: &AppState,
+    org_id: i64,
+    org_slug: &str,
+) -> Result<Vec<OrgProject>, AppError> {
+    let rows = sqlx::query_as::<_, (String, String, bool, Option<String>, DateTime<Utc>)>(
+        "SELECT slug, name, public, description, created_at FROM projects WHERE org_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(org_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    Ok(rows
+        .into_iter()
+        .map(|r| OrgProject {
+            url: format!("{}/{}", org_slug, r.0),
+            slug: r.0,
+            name: r.1,
+            public: r.2,
+            description: r.3.unwrap_or_default(),
+            created_at: r.4.format("%b %d %Y").to_string(),
+        })
+        .collect())
+}
+
+#[derive(Deserialize)]
+struct CreateProjectForm {
+    slug: String,
+    name: String,
+    public: Option<String>,
+    description: Option<String>,
+}
+
+async fn create_project_web(
+    State(state): State<AppState>,
+    RequireUser(user): RequireUser,
+    Path(org_slug): Path<String>,
+    Form(form): Form<CreateProjectForm>,
+) -> Result<axum::response::Response, AppError> {
+    let public = form.public.as_deref() == Some("on") || form.public.as_deref() == Some("true");
+
+    // Check org membership
+    let row = sqlx::query_as::<_, (i64, String)>(
+        "SELECT o.id, o.name FROM orgs o JOIN org_members om ON om.org_id = o.id WHERE o.slug = $1 AND om.user_id = $2",
+    )
+    .bind(&org_slug)
+    .bind(user.user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let (org_id, org_name) = match row {
+        Some(r) => r,
+        None => return Err(AppError::NotFound),
+    };
+
+    let slug = form.slug.trim().to_string();
+    let name = form.name.trim().to_string();
+
+    // Inline validation so we can return a rich error
+    let form_error = if slug.is_empty() || slug.len() > 50 {
+        Some("Slug must be between 1 and 50 characters.".to_string())
+    } else if !slug
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    {
+        Some("Slug may only contain lowercase letters, digits, and hyphens.".to_string())
+    } else if name.is_empty() || name.len() > 100 {
+        Some("Name must be between 1 and 100 characters.".to_string())
+    } else if form.description.as_deref().unwrap_or("").len() > 500 {
+        Some("Description must be at most 500 characters.".to_string())
+    } else {
+        None
+    };
+
+    if let Some(err) = form_error {
+        let projects = fetch_org_projects(&state, org_id, &org_slug).await?;
+        let maybe_user = MaybeUser(Some(crate::auth::middleware::AuthUser {
+            user_id: user.user_id,
+            github_login: user.github_login.clone(),
+        }));
+        return render(OrgTemplate {
+            org_slug: org_slug.clone(),
+            org_name,
+            user: UserCtx::from(&maybe_user),
+            projects,
+            form_error: err,
+            form_slug: slug,
+            form_name: name,
+        })
+        .map(|h| h.into_response());
+    }
+
+    let result = sqlx::query(
+        "INSERT INTO projects (org_id, slug, name, public, description) VALUES ($1, $2, $3, $4, $5)",
+    )
+    .bind(org_id)
+    .bind(&slug)
+    .bind(&name)
+    .bind(public)
+    .bind(form.description.as_deref().filter(|d| !d.is_empty()))
+    .execute(&state.pool)
+    .await;
+
+    match result {
+        Ok(_) => Ok(Redirect::to(&format!("/{org_slug}/{slug}")).into_response()),
+        Err(sqlx::Error::Database(ref e)) if e.constraint() == Some("projects_org_id_slug_key") => {
+            let projects = fetch_org_projects(&state, org_id, &org_slug).await?;
+            let maybe_user = MaybeUser(Some(crate::auth::middleware::AuthUser {
+                user_id: user.user_id,
+                github_login: user.github_login.clone(),
+            }));
+            render(OrgTemplate {
+                org_slug: org_slug.clone(),
+                org_name,
+                user: UserCtx::from(&maybe_user),
+                projects,
+                form_error: format!("A project named '{slug}' already exists in this org."),
+                form_slug: slug,
+                form_name: name,
+            })
+            .map(|h| h.into_response())
+        }
+        Err(e) => Err(AppError::Database(e)),
+    }
+}
+
+#[derive(Deserialize)]
+struct CompareQuery {
+    a: Option<String>,
+    b: Option<String>,
+}
+
+async fn compare(
+    maybe_user: MaybeUser,
+    Path((org_slug, project_slug)): Path<(String, String)>,
+    Query(q): Query<CompareQuery>,
+) -> Result<Html<String>, AppError> {
+    let run_id_a = q.a.unwrap_or_default();
+    let run_id_b = q.b.unwrap_or_default();
+    render(CompareTemplate {
+        org_slug,
+        project_slug,
+        user: UserCtx::from(&maybe_user),
+        run_id_a,
+        run_id_b,
+    })
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(landing))
+        // org page -- must come before /:org_slug/:project_slug so it matches one segment
+        .route("/:org_slug", get(org_page))
+        .route("/:org_slug/projects", post(create_project_web))
         .route("/:org_slug/:project_slug", get(project))
         .route("/:org_slug/:project_slug/runs-partial", get(runs_partial))
         .route("/:org_slug/:project_slug/runs/:run_id", get(run_detail))
@@ -759,6 +1039,7 @@ pub fn router() -> Router<AppState> {
             "/:org_slug/:project_slug/training_runs/:id",
             get(training_run),
         )
+        .route("/:org_slug/:project_slug/compare", get(compare))
         .route("/me", get(account))
         .route("/me/keys", post(create_key))
         .route("/me/keys/:id", delete(revoke_key))

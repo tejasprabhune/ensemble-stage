@@ -92,6 +92,7 @@ pub async fn callback(
     let user_id = upsert_user(&state, &github_user).await?;
 
     let exp = (Utc::now() + chrono::Duration::days(30)).timestamp();
+    let login = github_user.login.clone();
     let claims = SessionClaims {
         sub: user_id.to_string(),
         login: github_user.login,
@@ -114,9 +115,11 @@ pub async fn callback(
         .path("/auth/github/callback")
         .build();
 
+    let dest = format!("/{login}");
+
     Ok((
         jar.add(session_cookie).remove(remove_csrf),
-        Redirect::to("/"),
+        Redirect::to(&dest),
     ))
 }
 

@@ -44,8 +44,12 @@
       .map(tr => tr.dataset.runId)
       .filter(Boolean);
     if (checked.length < 2) return;
-    const params = checked.map(id => `run=${id}`).join('&');
-    window.location.href = `?compare=1&${params}`;
+    const [a, b] = checked;
+    // Navigate to the compare page in the current org/project context.
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length >= 2) {
+      window.location.href = `/${parts[0]}/${parts[1]}/compare?a=${a}&b=${b}`;
+    }
   }
 
   document.addEventListener('keydown', e => {
