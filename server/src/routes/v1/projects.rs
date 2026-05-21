@@ -377,17 +377,18 @@ pub async fn create_sweep(
     let (project_id, _) =
         require_project_write_access(&state, &auth, &org_slug, &project_slug).await?;
 
-    let sweep_id: Uuid = sqlx::query_scalar(
+    let sweep_id = Uuid::now_v7();
+    sqlx::query(
         r#"
         INSERT INTO sweeps (id, project_id, config, created_by_user_id)
-        VALUES (gen_random_uuid(), $1, $2, $3)
-        RETURNING id
+        VALUES ($1, $2, $3, $4)
         "#,
     )
+    .bind(sweep_id)
     .bind(project_id)
     .bind(&body.config)
     .bind(auth.user_id)
-    .fetch_one(&state.pool)
+    .execute(&state.pool)
     .await
     .map_err(AppError::Database)?;
 
@@ -417,19 +418,20 @@ pub async fn create_training_run(
     let (project_id, _) =
         require_project_write_access(&state, &auth, &org_slug, &project_slug).await?;
 
-    let training_run_id: Uuid = sqlx::query_scalar(
+    let training_run_id = Uuid::now_v7();
+    sqlx::query(
         r#"
         INSERT INTO training_runs (id, project_id, persona_name, base_model, hyperparameters, created_by_user_id)
-        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
-        RETURNING id
+        VALUES ($1, $2, $3, $4, $5, $6)
         "#,
     )
+    .bind(training_run_id)
     .bind(project_id)
     .bind(&body.persona_name)
     .bind(&body.base_model)
     .bind(&body.hyperparameters)
     .bind(auth.user_id)
-    .fetch_one(&state.pool)
+    .execute(&state.pool)
     .await
     .map_err(AppError::Database)?;
 
